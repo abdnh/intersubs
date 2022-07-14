@@ -8,16 +8,13 @@ import warnings
 
 from PyQt5 import QtWebEngineWidgets
 from PyQt5.QtCore import (
-    QObject,
     QPoint,
     QPointF,
     QRect,
     QSize,
     Qt,
-    QThread,
     QUrl,
     pyqtSignal,
-    pyqtSlot,
 )
 from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QTextCursor
 from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout, QTextEdit, QVBoxLayout
@@ -649,8 +646,12 @@ class ParentFrame(QFrame):
         super().paintEvent(event)
 
 
-if __name__ == "__main__":
+mpv = None
+
+
+def run(path=None) -> None:
     app = QApplication(sys.argv)
+    global mpv
     mpv = MPVInterSubs()
     # mpv.debug = True
 
@@ -661,11 +662,12 @@ if __name__ == "__main__":
 
     def on_end_file(message) -> None:
         print("on_end_file")
-        mpv.stop_intersubs()
         print(f"{message=}")
         if message["reason"] in ("quit", "stop", "eof"):
             mpv.close()
             sys.exit(app.exit())
+        else:
+            mpv.stop_intersubs()
 
     def on_file_loaded(message) -> None:
         print("on_file_loaded")
@@ -679,6 +681,12 @@ if __name__ == "__main__":
     mpv.register_callback("end-file", on_end_file)
     # FIXME: the shutdown event is apparently never received by programs using the JSON IPC
     # mpv.register_callback("shutdown", on_shutdown)
-
+    if path:
+        mpv.command("loadfile", path, "replace", "pause=no")
     form = ParentFrame(config)
     app.exec()
+
+
+if __name__ == "__main__":
+    path = sys.argv[1] if len(sys.argv) >= 2 else None
+    run(path)
