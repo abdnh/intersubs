@@ -1,4 +1,5 @@
 from typing import Any
+
 from .mpv import MPV
 
 
@@ -16,7 +17,8 @@ class MPVInterSubs(MPV):
         return value
 
     def no_selected_sub(self) -> bool:
-        return self.get_property("sub") == "no" or self.get_property("sub") == "auto"
+        sub = self.get_property("sub")
+        return sub in ("no", "auto")
 
     def save_current_subs_settings(self) -> None:
 
