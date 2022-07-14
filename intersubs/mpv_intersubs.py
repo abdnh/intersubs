@@ -1,5 +1,5 @@
 from typing import Any
-from mpv import MPV
+from .mpv import MPV
 
 
 class MPVInterSubs(MPV):

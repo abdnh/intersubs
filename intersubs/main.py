@@ -19,8 +19,8 @@ from PyQt5.QtCore import (
 from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QTextCursor
 from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout, QTextEdit, QVBoxLayout
 
-import config
-from mpv_intersubs import MPVInterSubs
+from . import config
+from .mpv_intersubs import MPVInterSubs
 
 # the import below is extremely useful to debug events by printing their type
 # with `print(event_lookup[str(event.type())])`
