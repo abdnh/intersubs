@@ -52,26 +52,8 @@ class MPVInterSubs(MPV):
         self.set_property("sub-ass-override", "force")
         self.set_property("fullscreen", True)
         self.hide_native_subs()
-
-        # mp.register_event("shutdown", stop_intersub)
-        # is_running = true
-        # self.register_callback("shutdown", self.stop_intersub)
         return True
 
-    # def stop_intersub(self) -> None:
-    #     print('stop_intersub')
-    #     self.command('show-text', 'Quitting interSubs...')
-    #     # os.execute(put_cmd_in_bg("pkill -f "..mpv_socket_file_path))
-    #     # destroy_mpv_socket_file()
-    #     # destroy_subs_file()
-    #     self.restore_subs_settings()
-    #     self.unregister_callback("shutdown", self.stop_intersub)
-    #     # is_running = false
-
-    # def on_shutdown(self):
-    #     print('on_shutdown')
-    #     try:
-    #         self.close()
-    #     except Exception:
-    #         # Ignore pywintypes.error: (232, 'WriteFile', 'The pipe is being closed.')
-    #         pass
+    def stop_intersubs(self) -> None:
+        self.command("show-text", "Quitting interSubs...")
+        self.restore_subs_settings()

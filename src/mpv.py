@@ -87,7 +87,7 @@ class MPVBase:
     default_argv = [
         # "--idle",
         "--no-terminal",
-        "--force-window=no",
+        # "--force-window=no",
         # "--ontop",
         "--audio-display=no",
         "--keep-open=no",
@@ -522,7 +522,7 @@ class MPV(MPVBase):
             if "data" in message:
                 callback(message["data"])
             else:
-                callback()
+                callback(message)
 
     def register_callback(self, name, callback):
         """Register a function `callback` for the event `name`."""

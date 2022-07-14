@@ -257,6 +257,8 @@ class TextWidget(QTextEdit):
             height = int(height)
 
             char_index = self.char_index_popup
+            if char_index < 0 or len(self.text) <= char_index:
+                return
             self.set_text_selection(char_index, char_index + self.length_highlight)
 
             rect = self.cursorRect(self.textCursor())
@@ -305,6 +307,8 @@ class TextWidget(QTextEdit):
 
         clicked_word = self.clicked_word_from_index(char_index)
         print(f"{clicked_word=} {self.previous_lookup=}")
+        if not clicked_word:
+            return
         if (
             clicked_word != self.previous_lookup
             and 0 <= char_index
@@ -507,13 +511,15 @@ class ParentFrame(QFrame):
         self.stretch_pixels = 20
 
     def _listen_to_subtitle_change(self):
-        def on_sub_text_changed(value=""):
-            if not value:
+        def on_sub_text_changed(message):
+            if isinstance(message, dict):
                 return
-            print("on_sub_text_changed:", value, f"{mpv.is_running()=}")
+            else:
+                subs = message
+            print("on_sub_text_changed:", subs)
             # hide subs when mpv isn't in fullscreen
-            to_hide = not mpv.get_property("fullscreen")
-            self.update_subtitles.emit(to_hide, value)
+            to_hide = not mpv.get_property("fullscreen") or not subs
+            self.update_subtitles.emit(to_hide, subs)
 
         mpv.register_property_callback("sub-text", on_sub_text_changed)
 
@@ -653,10 +659,26 @@ if __name__ == "__main__":
     config.x_screen = app.screens()[config.n_screen].geometry().x()
     config.y_screen = app.screens()[config.n_screen].geometry().y()
 
-    mpv.register_callback("end-file", lambda: app.exit())
-    mpv.command("loadfile", os.path.abspath("./sample.mkv"), "replace", "pause=no")
-    mpv.start_intersubs()
+    def on_end_file(message) -> None:
+        print("on_end_file")
+        mpv.stop_intersubs()
+        print(f"{message=}")
+        if message["reason"] in ("quit", "stop", "eof"):
+            mpv.close()
+            sys.exit(app.exit())
+
+    def on_file_loaded(message) -> None:
+        print("on_file_loaded")
+        mpv.start_intersubs()
+
+    # def on_shutdown():
+    #     print("on_shutdown")
+    #     app.exit()
+
+    mpv.register_callback("file-loaded", on_file_loaded)
+    mpv.register_callback("end-file", on_end_file)
+    # FIXME: the shutdown event is apparently never received by programs using the JSON IPC
+    # mpv.register_callback("shutdown", on_shutdown)
 
     form = ParentFrame(config)
-    form.show()
     app.exec()
