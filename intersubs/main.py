@@ -1,12 +1,8 @@
 #! /usr/bin/env python
 
-import json
-import math
-import os
 import sys
 import warnings
 
-from PyQt5 import QtWebEngineWidgets
 from PyQt5.QtCore import (
     QPoint,
     QPointF,
@@ -21,6 +17,8 @@ from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout, QTextEdit, QVBoxL
 
 from . import config
 from .mpv_intersubs import MPVInterSubs
+from .popup import Popup
+from .handler import InterSubsHandler
 
 # the import below is extremely useful to debug events by printing their type
 # with `print(event_lookup[str(event.type())])`
@@ -34,83 +32,11 @@ from .mpv_intersubs import MPVInterSubs
 #         return -1
 
 
-class Popup(QtWebEngineWidgets.QWebEngineView):
-    def __init__(self, parent=None):
-        super(QtWebEngineWidgets.QWebEngineView, self).__init__()
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setWindowOpacity(1)
-        self.setStyleSheet("QWidget{background: #000000}")
-        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
-        self.setWindowFlag(Qt.WindowType.Tool, True)
-        self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
-
-        self.setMaximumHeight(400)
-        self.setMaximumWidth(400)
-
-        self.setWindowFlag(Qt.X11BypassWindowManagerHint, True)
-
-        self.zoom_rate = parent.parent.config.default_zoom_popup
-        self.setZoomFactor(self.zoom_rate)
-
-        self.html_path = os.path.join(os.path.dirname(__file__), "popup", "index.html")
-
-        # used for rounding when rezooming
-        self.last_round = 1
-
-        # used to keep track of zoom changes
-        self.zoom_timed = 0
-
-        # this record the vertical scrolling in the popup
-        self.scroll_y = 0
-
-    def change_zoom(self, event):
-        # Ctrl+Alt+"+" or Ctrl+Alt+"-" for zooming
-        if (event.modifiers() & Qt.ControlModifier) and (
-            event.modifiers() & Qt.AltModifier
-        ):
-            proceed_zooming = False
-            if event.key() == Qt.Key_Up and self.zoom_rate < 2:
-                proceed_zooming = True
-                up_or_down = 1
-
-            if event.key() == Qt.Key_Down and self.zoom_rate > 0.3:
-                proceed_zooming = True
-                up_or_down = -1
-
-            if proceed_zooming is True:
-                self.zoom_rate = self.zoom_rate + up_or_down * 0.05
-                self.zoom_timed = self.zoom_timed + up_or_down
-
-                self.setZoomFactor(self.zoom_rate)
-
-                new_width = self.width() + up_or_down * self.base_width * 0.05
-                new_height = self.height() + up_or_down * self.base_height * 0.05
-
-                new_width_int, new_height_int = self.round_up_down(
-                    new_width, new_height
-                )
-
-                self.move(
-                    self.pos().x(), self.pos().y() + self.height() - new_height_int
-                )
-
-                self.resize(new_width_int, new_height_int)
-
-    # this function is needed because depending on the rounding we apply and if the zoom
-    # is changed many times, we may encounter unexpected position / size.
-    def round_up_down(self, x, y):
-        if self.last_round == -1:
-            self.last_round = 1
-            return math.ceil(x), math.ceil(y)
-        else:
-            self.last_round = -1
-            return math.floor(x), math.floor(y)
-
-
-class TextWidget(QTextEdit):
-    def __init__(self, parent, mpv):
+class SubtitleWidget(QTextEdit):
+    def __init__(self, parent, mpv, handler: InterSubsHandler):
         super().__init__()
         self.mpv = mpv
+        self.handler = handler
 
         self.setMouseTracking(True)
         self.setReadOnly(True)
@@ -138,7 +64,7 @@ class TextWidget(QTextEdit):
         self.parent = parent
         self.pos_parent = QPoint(0, 0)
 
-        self.popup = Popup(self)
+        self.popup = Popup(self, self.handler)
         self.popup.move(self.parent.config.x_screen, self.parent.config.y_screen)
         self.popup.resize(500, 400)
 
@@ -167,7 +93,7 @@ class TextWidget(QTextEdit):
         self.length_highlight = 0
 
         self.popup_showing_ready = True
-        self.popup.load(QUrl.fromLocalFile(self.popup.html_path))
+        self.popup.load(QUrl.fromLocalFile(self.handler.get_popup_html_path()))
 
         # set to True when a warning message to show only once has been shown
         self.warning_message_unique_shown = False
@@ -196,14 +122,8 @@ class TextWidget(QTextEdit):
                     """,
             self.callback_popup_height,
         )
-        # TODO
-        # print('setting textcontent...')
-        self.popup.page().runJavaScript(
-            """
-            document.body.textContent = %s;
-        """
-            % json.dumps(self.previous_lookup)
-        )
+
+        self.handler.on_popup_shown(self.popup, self.previous_lookup)
 
     def callback_popup_height(self, new_height):
         if new_height != "Cannot read property 'scrollHeight' of null":
@@ -303,7 +223,7 @@ class TextWidget(QTextEdit):
             )
         )
 
-        clicked_word = self.clicked_word_from_index(char_index)
+        clicked_word = self.handler.lookup_word_from_index(self.text, char_index)
         print(f"{clicked_word=} {self.previous_lookup=}")
         if not clicked_word:
             return
@@ -317,8 +237,6 @@ class TextWidget(QTextEdit):
             self.setUpdatesEnabled(True)  # we needs updates for highlighting text
             self.no_popup = False  # a popup is likely to be shown, disable highlighting
 
-            print("Looking up", clicked_word, "...")
-        # TODO
         show_popup = True
         if show_popup is True:
             self.popup.scroll_y = 0
@@ -372,17 +290,6 @@ class TextWidget(QTextEdit):
 
         super().leaveEvent(event)
 
-    def clicked_word_from_index(self, idx: int) -> str:
-        try:
-            lidx = self.text[: idx + 1].rindex(" ") + 1
-        except ValueError:
-            lidx = 0
-        try:
-            ridx = idx + self.text[idx:].index(" ")
-        except ValueError:
-            ridx = len(self.text)
-        return self.text[lidx:ridx]
-
     def mousePressEvent(self, event):
         point_position = event.pos()  # this is relative coordinates in the QTextEdit
         char_index = (
@@ -393,9 +300,9 @@ class TextWidget(QTextEdit):
                 Qt.HitTestAccuracy.ExactHit,
             )
         )
-        clicked_word = self.clicked_word_from_index(char_index)
-        print(f"{clicked_word=}")
-        self.mpv.command("show-text", clicked_word)
+
+        self.handler.on_sub_clicked(self.text, char_index)
+
         # we want to zoom in/out the popup, but set focus to this QTextEdit because
         # I could not redirect properly the keyPress events to the popup
         # if event.button() == Qt.MouseButton.RightButton:
@@ -473,10 +380,11 @@ class TextWidget(QTextEdit):
 class ParentFrame(QFrame):
     update_subtitles = pyqtSignal(bool, str)
 
-    def __init__(self, config, mpv):
+    def __init__(self, config, mpv: MPVInterSubs, handler: InterSubsHandler):
         super().__init__()
         self.config = config
         self.mpv = mpv
+        self.handler = handler
 
         self.update_subtitles.connect(self.render_subtitles)
         self._listen_to_subtitle_change()
@@ -492,7 +400,7 @@ class ParentFrame(QFrame):
 
         self.setStyleSheet(config.style_subs)
 
-        self.subtext = TextWidget(self, self.mpv)
+        self.subtext = SubtitleWidget(self, self.mpv, self.handler)
 
         self.subtitles_vbox = QVBoxLayout(self)
         self.subtitles_vbox.addStretch()
@@ -681,10 +589,15 @@ def run(path=None, mpv=None) -> None:
     # mpv.register_callback("shutdown", on_shutdown)
     if path:
         mpv.command("loadfile", path, "replace", "pause=no")
-    form = ParentFrame(config, mpv)
+    handler = InterSubsHandler(mpv)
+    form = ParentFrame(config, mpv, handler)
     app.exec()
 
 
-if __name__ == "__main__":
+def main() -> None:
     path = sys.argv[1] if len(sys.argv) >= 2 else None
     run(path)
+
+
+if __name__ == "__main__":
+    main()
