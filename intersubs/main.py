@@ -450,7 +450,7 @@ class ParentFrame(QFrame):
         super().paintEvent(event)
 
 
-def run(path=None, mpv=None) -> None:
+def run(path=None, mpv=None, handler=None) -> None:
     app = QApplication(sys.argv)
     if not mpv:
         mpv = MPVInterSubs()
@@ -484,7 +484,8 @@ def run(path=None, mpv=None) -> None:
     # mpv.register_callback("shutdown", on_shutdown)
     if path:
         mpv.command("loadfile", path, "replace", "pause=no")
-    handler = InterSubsHandler(mpv)
+    if not handler:
+        handler = InterSubsHandler(mpv)
     form = ParentFrame(config, mpv, handler)
     app.exec()
 
