@@ -19,7 +19,7 @@ from PyQt5.QtCore import (
 from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QTextCursor
 from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout, QTextEdit, QVBoxLayout
 
-import intersubs_config as config
+import config
 from mpv_intersubs import MPVInterSubs
 
 # the import below is extremely useful to debug events by printing their type
@@ -108,8 +108,9 @@ class Popup(QtWebEngineWidgets.QWebEngineView):
 
 
 class TextWidget(QTextEdit):
-    def __init__(self, parent=None):
+    def __init__(self, parent, mpv):
         super().__init__()
+        self.mpv = mpv
 
         self.setMouseTracking(True)
         self.setReadOnly(True)
@@ -347,14 +348,14 @@ class TextWidget(QTextEdit):
         if not self.already_in:
             self.already_in = True
             self.setUpdatesEnabled(True)
-            self.previously_paused = mpv.get_property("pause")
-            mpv.set_property("pause", True)
+            self.previously_paused = self.mpv.get_property("pause")
+            self.mpv.set_property("pause", True)
 
         super().enterEvent(event)
 
     def leaveEvent(self, event):
         if not self.previously_paused:
-            mpv.set_property("pause", False)
+            self.mpv.set_property("pause", False)
 
         self.already_in = False
 
@@ -394,7 +395,7 @@ class TextWidget(QTextEdit):
         )
         clicked_word = self.clicked_word_from_index(char_index)
         print(f"{clicked_word=}")
-        mpv.command("show-text", clicked_word)
+        self.mpv.command("show-text", clicked_word)
         # we want to zoom in/out the popup, but set focus to this QTextEdit because
         # I could not redirect properly the keyPress events to the popup
         # if event.button() == Qt.MouseButton.RightButton:
@@ -472,13 +473,13 @@ class TextWidget(QTextEdit):
 class ParentFrame(QFrame):
     update_subtitles = pyqtSignal(bool, str)
 
-    def __init__(self, config):
+    def __init__(self, config, mpv):
         super().__init__()
+        self.config = config
+        self.mpv = mpv
 
         self.update_subtitles.connect(self.render_subtitles)
         self._listen_to_subtitle_change()
-
-        self.config = config
 
         self.setWindowFlag(Qt.X11BypassWindowManagerHint, True)
 
@@ -491,7 +492,7 @@ class ParentFrame(QFrame):
 
         self.setStyleSheet(config.style_subs)
 
-        self.subtext = TextWidget(parent=self)
+        self.subtext = TextWidget(self, self.mpv)
 
         self.subtitles_vbox = QVBoxLayout(self)
         self.subtitles_vbox.addStretch()
@@ -515,10 +516,10 @@ class ParentFrame(QFrame):
                 subs = message
             print("on_sub_text_changed:", subs)
             # hide subs when mpv isn't in fullscreen
-            to_hide = not mpv.get_property("fullscreen") or not subs
+            to_hide = not self.mpv.get_property("fullscreen") or not subs
             self.update_subtitles.emit(to_hide, subs)
 
-        mpv.register_property_callback("sub-text", on_sub_text_changed)
+        self.mpv.register_property_callback("sub-text", on_sub_text_changed)
 
     def render_subtitles(self, to_hide, text=""):
         print(f"render_subtitles: {text=} {to_hide=}")
@@ -646,13 +647,10 @@ class ParentFrame(QFrame):
         super().paintEvent(event)
 
 
-mpv = None
-
-
-def run(path=None) -> None:
+def run(path=None, mpv=None) -> None:
     app = QApplication(sys.argv)
-    global mpv
-    mpv = MPVInterSubs()
+    if not mpv:
+        mpv = MPVInterSubs()
     # mpv.debug = True
 
     config.screen_width = app.screens()[config.n_screen].size().width()
@@ -683,7 +681,7 @@ def run(path=None) -> None:
     # mpv.register_callback("shutdown", on_shutdown)
     if path:
         mpv.command("loadfile", path, "replace", "pause=no")
-    form = ParentFrame(config)
+    form = ParentFrame(config, mpv)
     app.exec()
 
 
