@@ -1,20 +1,26 @@
 #! /usr/bin/env python
-# -*- coding: utf-8 -*-
 
+import json
+import math
 import os
 import sys
-import time
-
+import warnings
 
 from PyQt5 import QtWebEngineWidgets
-from PyQt5.QtCore import Qt, QThread, QObject, QSize, QPointF
-from PyQt5.QtCore import pyqtSignal, pyqtSlot
-from PyQt5.QtCore import QUrl, QPoint, QRect
-from PyQt5.QtWidgets import QTextEdit, QFrame, QApplication
-
-from PyQt5.QtGui import QTextCursor, QFont, QPainter, QPen, QColor
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
-
+from PyQt5.QtCore import (
+    QObject,
+    QPoint,
+    QPointF,
+    QRect,
+    QSize,
+    Qt,
+    QThread,
+    QUrl,
+    pyqtSignal,
+    pyqtSlot,
+)
+from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QTextCursor
+from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout, QTextEdit, QVBoxLayout
 
 import intersubs_config as config
 from mpv_intersubs import MPVInterSubs
@@ -24,170 +30,84 @@ from mpv_intersubs import MPVInterSubs
 # from event_lookup import event_lookup
 
 
-def sign(x):
-    if x >= 0:
-        return 1
-    else:
-        return -1
+# def sign(x):
+#     if x >= 0:
+#         return 1
+#     else:
+#         return -1
 
 
-# def mpv_pause():
-#     os.system('echo \'{ "command": ["set_property", "pause", true] }\' | socat - "' + mpv_socket + '" > /dev/null')
+class Popup(QtWebEngineWidgets.QWebEngineView):
+    def __init__(self, parent=None):
+        super(QtWebEngineWidgets.QWebEngineView, self).__init__()
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setWindowOpacity(1)
+        self.setStyleSheet("QWidget{background: #000000}")
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        self.setWindowFlag(Qt.WindowType.Tool, True)
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
 
+        self.setMaximumHeight(400)
+        self.setMaximumWidth(400)
 
-# def mpv_resume():
-#     os.system('echo \'{ "command": ["set_property", "pause", false] }\' | socat - "'
-#               + mpv_socket + '" > /dev/null')
+        self.setWindowFlag(Qt.X11BypassWindowManagerHint, True)
 
+        self.zoom_rate = parent.parent.config.default_zoom_popup
+        self.setZoomFactor(self.zoom_rate)
 
-# def mpv_pause_status():
-#     stdoutdata = subprocess.getoutput(
-#             'echo \'{ "command": ["get_property", "pause"] }\' | socat - "' + mpv_socket + '"')
+        self.html_path = os.path.join(os.path.dirname(__file__), "popup", "index.html")
 
-#     try:
-#         return loads(stdoutdata)['data']
-#     except Exception:
-#         return mpv_pause_status()
+        # used for rounding when rezooming
+        self.last_round = 1
 
+        # used to keep track of zoom changes
+        self.zoom_timed = 0
 
-# def mpv_fullscreen_status():
-#     stdoutdata = subprocess.getoutput('echo \'{ "command": ["get_property", "fullscreen"] }\' | socat - "'
-#                                       + mpv_socket + '"')
-#     try:
-#         return loads(stdoutdata)['data']
-#     except Exception:
-#         return mpv_fullscreen_status()
+        # this record the vertical scrolling in the popup
+        self.scroll_y = 0
 
+    def change_zoom(self, event):
+        # Ctrl+Alt+"+" or Ctrl+Alt+"-" for zooming
+        if (event.modifiers() & Qt.ControlModifier) and (
+            event.modifiers() & Qt.AltModifier
+        ):
+            proceed_zooming = False
+            if event.key() == Qt.Key_Up and self.zoom_rate < 2:
+                proceed_zooming = True
+                up_or_down = 1
 
-# class thread_subtitles(QObject):
-#     update_subtitles = pyqtSignal(bool, str)
+            if event.key() == Qt.Key_Down and self.zoom_rate > 0.3:
+                proceed_zooming = True
+                up_or_down = -1
 
-#     # @pyqtSlot()
-#     # def main(self):
-#     #     def on_sub_text_changed(value = None) -> None:
-#     #         print('on_sub_text_changed:', value)
-#     #         self.update_subtitles.emit(False, value)
+            if proceed_zooming is True:
+                self.zoom_rate = self.zoom_rate + up_or_down * 0.05
+                self.zoom_timed = self.zoom_timed + up_or_down
 
-#     #     mpv.register_property_callback("sub-text", on_sub_text_changed)
+                self.setZoomFactor(self.zoom_rate)
 
-#     @pyqtSlot()
-#     def main(self):
-#         def on_sub_text_changed(value = None) -> None:
-#             hidden = True
-#             # hide subs when mpv isn't in focus or in fullscreen
-#             if mpv.get_property("fullscreen"):
-#                 hidden = False
-#             self.update_subtitles.emit(not hidden, value)
+                new_width = self.width() + up_or_down * self.base_width * 0.05
+                new_height = self.height() + up_or_down * self.base_height * 0.05
 
-#         mpv.register_property_callback("sub-text", on_sub_text_changed)
+                new_width_int, new_height_int = self.round_up_down(
+                    new_width, new_height
+                )
 
-# @pyqtSlot()
-# def main(self):
-#     subs = ""
-#     hidden = True
-#     check_time_fullscreen = 0.1
+                self.move(
+                    self.pos().x(), self.pos().y() + self.height() - new_height_int
+                )
 
-#     inc = 0
-#     assert check_time_fullscreen > config.update_time
-#     ratio = int(check_time_fullscreen / config.update_time)
+                self.resize(new_width_int, new_height_int)
 
-#     tmp_file_subs = ''
-
-#     while 1:
-#         time.sleep(config.update_time)
-
-#         # hide subs when mpv isn't in focus or in fullscreen
-#         if inc > ratio:
-#             inc = 0
-#             if mpv.get_property("fullscreen"):
-#                 hidden = False
-#             else:
-#                 if hidden is not True:  # no need to emit if already hidden
-#                     hidden = True
-#                     self.update_subtitles.emit(True, tmp_file_subs)
-#         inc += 1
-
-#         if not hidden:
-#             try:
-#                 tmp_file_subs = open(sub_file).read()
-#             except Exception:
-#                 continue
-
-#             if tmp_file_subs != subs:
-#                 self.update_subtitles.emit(False, tmp_file_subs)
-
-#                 subs = tmp_file_subs
-
-
-# class Popup(QtWebEngineWidgets.QWebEngineView):
-#     def __init__(self, parent=None):
-#         super(QtWebEngineWidgets.QWebEngineView, self).__init__()
-#         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-#         self.setWindowOpacity(0.6);
-#         self.setStyleSheet("QWidget{background: #000000}")
-#         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
-#         self.setWindowFlag(Qt.WindowType.Tool, True)
-#         self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
-
-
-#         webEnginePage = self.page()
-#         webEnginePage.setBackgroundColor(Qt.transparent)
-
-#         self.setWindowFlags(Qt.X11BypassWindowManagerHint)
-
-#         self.zoom_rate = parent.parent.config.default_zoom_popup
-#         self.setZoomFactor(self.zoom_rate)
-
-#         self.html_path = os.path.join(os.path.expanduser('~/.config/mpv/scripts/'),
-#                                       'rikai-mpv/rikaichamp-backend/web_page/my_attempt.html')
-
-#         # used for rounding when rezooming
-#         self.last_round = 1
-
-#         # used to keep track of zoom changes
-#         self.zoom_timed = 0
-
-#         # this record the vertical scrolling in the popup
-#         self.scroll_y = 0
-
-#     def change_zoom(self, event):
-#         # Ctrl+Alt+"+" or Ctrl+Alt+"-" for zooming
-#         if ((event.modifiers() & Qt.ControlModifier)
-#                 and (event.modifiers() & Qt.AltModifier)):
-#             proceed_zooming = False
-#             if event.key() == Qt.Key_Up and self.zoom_rate < 2:
-#                 proceed_zooming = True
-#                 up_or_down = 1
-
-#             if event.key() == Qt.Key_Down and self.zoom_rate > 0.3:
-#                 proceed_zooming = True
-#                 up_or_down = -1
-
-#             if proceed_zooming is True:
-#                 self.zoom_rate = self.zoom_rate + up_or_down * 0.05
-#                 self.zoom_timed = self.zoom_timed + up_or_down
-
-#                 self.setZoomFactor(self.zoom_rate)
-
-#                 new_width = self.width() + up_or_down * self.base_width * 0.05
-#                 new_height = self.height() + up_or_down * self.base_height * 0.05
-
-#                 new_width_int, new_height_int = self.round_up_down(new_width, new_height)
-
-#                 self.move(self.pos().x(),
-#                           self.pos().y() + self.height() - new_height_int)
-
-#                 self.resize(new_width_int, new_height_int)
-
-#     # this function is needed because depending on the rounding we apply and if the zoom
-#     # is changed many times, we may encounter unexpected position / size.
-#     def round_up_down(self, x, y):
-#         if self.last_round == -1:
-#             self.last_round = 1
-#             return math.ceil(x), math.ceil(y)
-#         else:
-#             self.last_round = -1
-#             return math.floor(x), math.floor(y)
+    # this function is needed because depending on the rounding we apply and if the zoom
+    # is changed many times, we may encounter unexpected position / size.
+    def round_up_down(self, x, y):
+        if self.last_round == -1:
+            self.last_round = 1
+            return math.ceil(x), math.ceil(y)
+        else:
+            self.last_round = -1
+            return math.floor(x), math.floor(y)
 
 
 class TextWidget(QTextEdit):
@@ -220,9 +140,9 @@ class TextWidget(QTextEdit):
         self.parent = parent
         self.pos_parent = QPoint(0, 0)
 
-        # self.popup = Popup(self)
-        # self.popup.move(self.parent.config.x_screen, self.parent.config.y_screen)
-        # self.popup.resize(800, 800)
+        self.popup = Popup(self)
+        self.popup.move(self.parent.config.x_screen, self.parent.config.y_screen)
+        self.popup.resize(500, 400)
 
         font = self.currentFont()
         font.setPointSize(self.parent.config.default_font_point_size)
@@ -248,183 +168,207 @@ class TextWidget(QTextEdit):
         # number of characters to highlight when the popup is shown
         self.length_highlight = 0
 
-        # execution after the html of the popup has been loaded
-        # self.popup.loadFinished.connect(self.after_popup_loaded)
-
         self.popup_showing_ready = True
+        self.popup.load(QUrl.fromLocalFile(self.popup.html_path))
 
         # set to True when a warning message to show only once has been shown
         self.warning_message_unique_shown = False
 
-    # def after_popup_loaded(self, arg):
-    #     self.popup.page().runJavaScript(
-    #                 """
-    #                 try {
-    #                 document.getElementById('rikaichamp-window').scrollWidth;
-    #                 }
-    #                 catch(err) {
-    #                     err.message;
-    #                 }
-    #                 """,
-    #                 self.callback_popup_width)
+    def after_popup_loaded(self):
+        self.popup.page().runJavaScript(
+            """
+                    try {
+                    document.body.scrollWidth;
+                    }
+                    catch(err) {
+                        err.message;
+                    }
+                    """,
+            self.callback_popup_width,
+        )
 
-    #     self.popup.page().runJavaScript(
-    #                 """
-    #                 try {
-    #                 document.getElementById('rikaichamp-window').scrollHeight;
-    #                 }
-    #                 catch(err) {
-    #                     err.message;
-    #                 }
-    #                 """,
-    #                 self.callback_popup_height)
+        self.popup.page().runJavaScript(
+            """
+                    try {
+                    document.body.scrollHeight;
+                    }
+                    catch(err) {
+                        err.message;
+                    }
+                    """,
+            self.callback_popup_height,
+        )
+        # TODO
+        # print('setting textcontent...')
+        self.popup.page().runJavaScript(
+            """
+            document.body.textContent = %s;
+        """
+            % json.dumps(self.previous_lookup)
+        )
 
-    # def callback_popup_height(self, new_height):
-    #     if new_height != "Cannot read property 'scrollHeight' of null":
-    #         self.popup.base_height = new_height
+    def callback_popup_height(self, new_height):
+        if new_height != "Cannot read property 'scrollHeight' of null":
+            self.popup.base_height = new_height
 
-    #         self.popup_showing_ready = True  # From here, we don't care about the .html file
+            self.popup_showing_ready = (
+                True  # From here, we don't care about the .html file
+            )
+            self.show_popup()
+        else:
+            warnings.warn(
+                "Popup page loading has failed and this should not happen."
+                + " Please fill a bug report if this gets inconvenient.",
+                stacklevel=2,
+            )
 
-    #         self.show_popup()
-    #     else:
-    #         warnings.warn('Popup page loading has failed and this should not happen.'
-    #                       + ' Please fill a bug report if this gets inconvenient.',
-    #                       stacklevel=2)
+    def callback_popup_width(self, new_width):
+        if new_width != "Cannot read property 'scrollHeight' of null":
+            self.popup.base_width = new_width
+        else:
+            warnings.warn(
+                "Popup page loading has failed and this should not happen."
+                + " Please fill a bug report if this gets inconvenient.",
+                stacklevel=2,
+            )
 
-    # def callback_popup_width(self, new_width):
-    #     if new_width != "Cannot read property 'scrollHeight' of null":
-    #         self.popup.base_width = new_width
-    #     else:
-    #         warnings.warn('Popup page loading has failed and this should not happen.'
-    #                       + ' Please fill a bug report if this gets inconvenient.',
-    #                       stacklevel=2)
+    def show_popup(self):
+        if (
+            self.already_in
+        ):  # it could be that we exited the subtitles before getting there
+            # we need this to take into account the zoom setting previously set
 
-    # def show_popup(self):
-    #     if self.already_in:  # it could be that we exited the subtitles before getting there
-    #         # we need this to take into account the zoom setting previously set
+            width = (
+                self.popup.base_width
+                * (self.parent.config.default_zoom_popup + 0.05 * self.popup.zoom_timed)
+                + 5
+            )
+            height = (
+                self.popup.base_height
+                * (self.parent.config.default_zoom_popup + 0.05 * self.popup.zoom_timed)
+                + 5
+            )
 
-    #         width = self.popup.base_width * (self.parent.config.default_zoom_popup
-    #                                          + 0.05 * self.popup.zoom_timed) + 5
-    #         height = self.popup.base_height * (self.parent.config.default_zoom_popup
-    #                                            + 0.05 * self.popup.zoom_timed) + 5
+            # the pop up is shown above the subtitles, and it should not excess the
+            # available space there, namely `self.pos_parent.y()`
+            height = min(self.pos_parent.y(), height)
 
-    #         # the pop up is shown above the subtitles, and it should not excess the
-    #         # available space there, namely `self.pos_parent.y()`
-    #         height = min(self.pos_parent.y(), height)
+            width = int(width)
+            height = int(height)
 
-    #         width = int(width)
-    #         height = int(height)
+            char_index = self.char_index_popup
+            self.set_text_selection(char_index, char_index + self.length_highlight)
 
-    #         char_index = self.char_index_popup
-    #         self.set_text_selection(char_index, char_index + self.length_highlight)
+            rect = self.cursorRect(self.textCursor())
 
-    #         rect = self.cursorRect(self.textCursor())
+            # absolute coordinate of the top left of the current selection
+            cursor_top = self.viewport().mapToGlobal(QPoint(rect.left(), rect.top()))
 
-    #         # absolute coordinate of the top left of the current selection
-    #         cursor_top = self.viewport().mapToGlobal(QPoint(rect.left(), rect.top()))
+            x_screen = self.parent.config.x_screen
+            x_popup = cursor_top.x() - (
+                self.fontMetrics().width(
+                    self.text[char_index : char_index + self.length_highlight]
+                )
+                + self.fontMetrics().width(self.text[char_index]) // 4
+                if char_index < len(self.text)
+                else 0
+            )
 
-    #         x_screen = self.parent.config.x_screen
-    #         x_popup = (cursor_top.x()
-    #                    - self.fontMetrics().width(self.text[char_index:char_index
-    #                                                         + self.length_highlight])
-    #                    + self.fontMetrics().width(self.text[char_index]) // 4)
+            # make sure we don't go out of the screen
+            if x_popup + width >= (x_screen + self.parent.config.screen_width):
+                x_popup = x_screen + self.parent.config.screen_width - width
 
-    #         # make sure we don't go out of the screen
-    #         if x_popup + width >= (x_screen + self.parent.config.screen_width):
-    #             x_popup = x_screen + self.parent.config.screen_width - width
+            y_popup = max(0, self.pos_parent.y() - height)
 
-    #         y_popup = max(0, self.pos_parent.y() - height)
+            # we need to be careful to never cover the QTextEdit when changing popup
+            if self.popup.height() > height:
+                self.popup.resize(width, height)
+                self.popup.move(x_popup, y_popup)
+            else:
+                self.popup.move(x_popup, y_popup)
+                self.popup.resize(width, height)
 
-    #         # we need to be careful to never cover the QTextEdit when changing popup
-    #         if self.popup.height() > height:
-    #             self.popup.resize(width, height)
-    #             self.popup.move(x_popup, y_popup)
-    #         else:
-    #             self.popup.move(x_popup, y_popup)
-    #             self.popup.resize(width, height)
+            self.popup.show()
 
-    #         self.popup.show()
+        self.no_popup = True
 
-    #     self.no_popup = True
+    def mouseMoveEvent(self, event):
+        point_position = event.pos()  # this is relative coordinates in the QTextEdit
+        char_index = (
+            self.document()
+            .documentLayout()
+            .hitTest(
+                QPointF(point_position.x(), point_position.y()),
+                Qt.HitTestAccuracy.ExactHit,
+            )
+        )
 
-    # def mouseMoveEvent(self, event):
-    #     point_position = event.pos()  # this is relative coordinates in the QTextEdit
-    #     char_index = self.document().documentLayout().hitTest(
-    #         QPointF(point_position.x(), point_position.y()),
-    #         Qt.HitTestAccuracy.ExactHit)
+        clicked_word = self.clicked_word_from_index(char_index)
+        print(f"{clicked_word=} {self.previous_lookup=}")
+        if (
+            clicked_word != self.previous_lookup
+            and 0 <= char_index
+            and char_index < self.len_text
+        ):
 
-    #     print(f"{self.text[char_index:]=} {self.previous_lookup=}")
-    #     if (self.text[char_index:] != self.previous_lookup
-    #             and 0 <= char_index
-    #             and char_index < self.len_text):
+            self.previous_lookup = clicked_word
+            self.setUpdatesEnabled(True)  # we needs updates for highlighting text
+            self.no_popup = False  # a popup is likely to be shown, disable highlighting
 
-    #         self.previous_lookup = self.text[char_index:]
-    #         self.setUpdatesEnabled(True)  # we needs updates for highlighting text
-    #         self.no_popup = False  # a popup is likely to be shown, disable highlighting
+            print("Looking up", clicked_word, "...")
+        # TODO
+        show_popup = True
+        if show_popup is True:
+            self.popup.scroll_y = 0
+            self.char_index_popup = char_index
+            self.popup_reset = True
 
-    #         print('Looking up', self.text[char_index:], '...')
+            # this resize is "needed" as I could so far not set the width of
+            # the popup no matter the size of the window. We make it bigger so that
+            # the `scrollWidth` value we get later makes sense
+            resize_value = (
+                self.parent.config.x_screen
+                + self.parent.config.screen_width
+                - self.popup.pos().x()
+            )
+            self.popup.resize(resize_value, self.popup.height())
 
-    # if show_popup is True:
-    #     self.popup.scroll_y = 0
-    #     self.char_index_popup = char_index
-    #     self.popup_reset = True
+            # this show is needed to record later on the right size of the popup
+            # in case it was not shown already
+            self.popup.show()
 
-    #     # this resize is "needed" as I could so far not set the width of
-    #     # the popup no matter the size of the window. We make it bigger so that
-    #     # the `scrollWidth` value we get later makes sense
-    #     resize_value = (self.parent.config.x_screen
-    #                     + self.parent.config.screen_width - self.popup.pos().x())
-    #     self.popup.resize(resize_value, self.popup.height())
+            if self.popup_showing_ready:
+                self.after_popup_loaded()
 
-    #     # this show is needed to record later on the right size of the popup
-    #     # in case it was not shown already
-    #     self.popup.show()
+    def enterEvent(self, event):
+        # the case where this event is triggered several times has been encountered,
+        # hence the `self.already_in`
+        if not self.already_in:
+            self.already_in = True
+            self.setUpdatesEnabled(True)
+            self.previously_paused = mpv.get_property("pause")
+            mpv.set_property("pause", True)
 
-    #     if self.popup_showing_ready:
-    #         self.popup_showing_ready = False
-    #         self.popup.load(QUrl.fromLocalFile(self.popup.html_path))
-    #     else:
-    #         # the previous .html file is still being used, which is typically
-    #         # the case when the mouse moves too fast. This is really subideal and
-    #         # an other solution should be found to avoid reading and writing .html
-    #         # files at the same time...
-    #         if not self.warning_message_unique_shown:
-    #             warnings.warn('Ignore this popup showing as it is likely to fail.'
-    #                           + ' Please fill a bug report if this gets inconvenient.'
-    #                           + " This warning won't be shown again.",
-    #                           stacklevel=2)
-    #             self.warning_message_unique_shown = True
-    #         pass
+        super().enterEvent(event)
 
-    # def enterEvent(self, event):
-    #     # the case where this event is triggered several times has been encountered,
-    #     # hence the `self.already_in`
-    #     if not self.already_in:
-    #         self.already_in = True
-    #         self.setUpdatesEnabled(True)
-    #         self.previously_paused = mpv.get_property("pause")
-    #         mpv.set_property("pause", True)
+    def leaveEvent(self, event):
+        if not self.previously_paused:
+            mpv.set_property("pause", False)
 
-    #     super().enterEvent(event)
+        self.already_in = False
 
-    # def leaveEvent(self, event):
-    #     if not self.previously_paused:
-    #         mpv.set_property("pause", False)
+        self.setUpdatesEnabled(True)
 
-    #     self.already_in = False
+        # reset selection
+        self.set_text_selection(0, 0)
 
-    #     self.setUpdatesEnabled(True)
+        # reset it in case we want to look back at the same position
+        self.previous_lookup = ""
 
-    #     # reset selection
-    #     self.set_text_selection(0, 0)
+        # hiding popup in case it was shown
+        self.popup.hide()
 
-    #     # reset it in case we want to look back at the same position
-    #     self.previous_lookup = ""
-
-    #     # hiding popup in case it was shown
-    #     self.popup.hide()
-
-    #     super().leaveEvent(event)
+        super().leaveEvent(event)
 
     def clicked_word_from_index(self, idx: int) -> str:
         try:
@@ -448,7 +392,7 @@ class TextWidget(QTextEdit):
             )
         )
         clicked_word = self.clicked_word_from_index(char_index)
-        print(f"{self.text[char_index:]=} {clicked_word=}")
+        print(f"{clicked_word=}")
         mpv.command("show-text", clicked_word)
         # we want to zoom in/out the popup, but set focus to this QTextEdit because
         # I could not redirect properly the keyPress events to the popup
@@ -530,20 +474,12 @@ class ParentFrame(QFrame):
     def __init__(self, config):
         super().__init__()
 
-        # self.thread_subs = QThread()
-        # self.obj = thread_subtitles()
-
         self.update_subtitles.connect(self.render_subtitles)
         self._listen_to_subtitle_change()
 
-        # self.obj.moveToThread(self.thread_subs)
-        # self.thread_subs.started.connect(self.obj.main)
-        # self.thread_subs.start()
-        # mpv.register_property_callback("sub-text", self.render_subtitles)
-
         self.config = config
 
-        self.setWindowFlags(Qt.X11BypassWindowManagerHint)
+        self.setWindowFlag(Qt.X11BypassWindowManagerHint, True)
 
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setWindowOpacity(0.6)
@@ -575,20 +511,15 @@ class ParentFrame(QFrame):
             if not value:
                 return
             print("on_sub_text_changed:", value, f"{mpv.is_running()=}")
-            # hide subs when mpv isn't in focus or in fullscreen
+            # hide subs when mpv isn't in fullscreen
             to_hide = not mpv.get_property("fullscreen")
-            # to_hide = False
             self.update_subtitles.emit(to_hide, value)
 
         mpv.register_property_callback("sub-text", on_sub_text_changed)
-        # mpv.register_property_callback("sub-text-ass", on_sub_text_changed)
-        # mpv.register_property_callback("sub-color", on_sub_text_changed)
 
     def render_subtitles(self, to_hide, text=""):
         print(f"render_subtitles: {text=} {to_hide=}")
 
-        # print("-------")
-        # print("Input: `" + text + "`")
         self.subtext.render_ready = 0
 
         if to_hide or not len(text):
