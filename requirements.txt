@@ -1,0 +1,9 @@
+mypy
+pylint
+isort
+black
+pywin32
+PyQt5
+PyQtWebEngine
+PyQt6
+numpy
