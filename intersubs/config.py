@@ -1,6 +1,3 @@
-# interval between checking for the next subtitle, in seconds
-update_time = 0.01
-
 # holds the styling of the subtitles. Modify at your own risks.
 style_subs = """
     QFrame {

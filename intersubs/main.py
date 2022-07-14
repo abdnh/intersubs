@@ -20,17 +20,6 @@ from .mpv_intersubs import MPVInterSubs
 from .popup import Popup
 from .handler import InterSubsHandler
 
-# the import below is extremely useful to debug events by printing their type
-# with `print(event_lookup[str(event.type())])`
-# from event_lookup import event_lookup
-
-
-# def sign(x):
-#     if x >= 0:
-#         return 1
-#     else:
-#         return -1
-
 
 class SubtitleWidget(QTextEdit):
     def __init__(self, parent, mpv, handler: InterSubsHandler):
@@ -92,7 +81,6 @@ class SubtitleWidget(QTextEdit):
         # number of characters to highlight when the popup is shown
         self.length_highlight = 0
 
-        self.popup_showing_ready = True
         self.popup.load(QUrl.fromLocalFile(self.handler.get_popup_html_path()))
 
         # set to True when a warning message to show only once has been shown
@@ -129,9 +117,6 @@ class SubtitleWidget(QTextEdit):
         if new_height != "Cannot read property 'scrollHeight' of null":
             self.popup.base_height = new_height
 
-            self.popup_showing_ready = (
-                True  # From here, we don't care about the .html file
-            )
             self.show_popup()
         else:
             warnings.warn(
@@ -156,15 +141,9 @@ class SubtitleWidget(QTextEdit):
         ):  # it could be that we exited the subtitles before getting there
             # we need this to take into account the zoom setting previously set
 
-            width = (
-                self.popup.base_width
-                * (self.parent.config.default_zoom_popup + 0.05 * self.popup.zoom_timed)
-                + 5
-            )
+            width = self.popup.base_width * (self.parent.config.default_zoom_popup) + 5
             height = (
-                self.popup.base_height
-                * (self.parent.config.default_zoom_popup + 0.05 * self.popup.zoom_timed)
-                + 5
+                self.popup.base_height * (self.parent.config.default_zoom_popup) + 5
             )
 
             # the pop up is shown above the subtitles, and it should not excess the
@@ -239,9 +218,7 @@ class SubtitleWidget(QTextEdit):
 
         show_popup = True
         if show_popup is True:
-            self.popup.scroll_y = 0
             self.char_index_popup = char_index
-            self.popup_reset = True
 
             # this resize is "needed" as I could so far not set the width of
             # the popup no matter the size of the window. We make it bigger so that
@@ -256,9 +233,7 @@ class SubtitleWidget(QTextEdit):
             # this show is needed to record later on the right size of the popup
             # in case it was not shown already
             self.popup.show()
-
-            if self.popup_showing_ready:
-                self.after_popup_loaded()
+            self.after_popup_loaded()
 
     def enterEvent(self, event):
         # the case where this event is triggered several times has been encountered,
@@ -303,24 +278,7 @@ class SubtitleWidget(QTextEdit):
 
         self.handler.on_sub_clicked(self.text, char_index)
 
-        # we want to zoom in/out the popup, but set focus to this QTextEdit because
-        # I could not redirect properly the keyPress events to the popup
-        # if event.button() == Qt.MouseButton.RightButton:
-        #     self.activateWindow()
-        #     self.setFocus()
-
-        # # we want to set focus to the parent frame, to likely zoom in/out the subtitles
-        # elif event.button() == Qt.LeftButton:
-        #     super().mousePressEvent(event)
-        #     self.parent.activateWindow()
-        #     self.parent.setFocus()
-        # else:
-        #     pass
         super().mousePressEvent(event)
-
-    # def keyPressEvent(self, event):  # this should handle only the popup zoom
-    #     self.popup.change_zoom(event)
-    #     super().keyPressEvent(event)
 
     # we do not want the context menu to display and steal focus
     def contextMenuEvent(self, event):
@@ -355,17 +313,6 @@ class SubtitleWidget(QTextEdit):
     #         my_cursor.mergeCharFormat(my_char_format)
 
     #     super().paintEvent(event)
-
-    # wheel events are unfortunately captured by the QTextEdit, but should be redirected
-    # to the popup in case the entries take too much place
-    # def wheelEvent(self, event):
-    #     # reasonable scroll policy. Note however that system-wide pad up/down movement
-    #     # setting may not apply and has not been tested
-    #     self.popup.scroll_y = (- sign(event.angleDelta().y())
-    #                            * self.parent.config.screen_height / 15)
-
-    #     script = f"window.scrollTo(0, document.scrollingElement.scrollTop + {self.popup.scroll_y});"
-    #     self.popup.page().runJavaScript(script)
 
     def minimumSizeHint(self):
         return QSize(5, 5)
@@ -430,8 +377,6 @@ class ParentFrame(QFrame):
         self.mpv.register_property_callback("sub-text", on_sub_text_changed)
 
     def render_subtitles(self, to_hide, text=""):
-        print(f"render_subtitles: {text=} {to_hide=}")
-
         self.subtext.render_ready = 0
 
         if to_hide or not len(text):
@@ -496,56 +441,6 @@ class ParentFrame(QFrame):
         self.subtext.pos_parent = self.pos()
 
         self.subtext.render_ready += 1
-
-    # def keyPressEvent(self, event):
-    #     self.subtext.setUpdatesEnabled(True)
-
-    #     # Ctrl+Alt+"+" or Ctrl+Alt+"-" for zooming
-    #     if ((event.modifiers() & Qt.ControlModifier)
-    #             and (event.modifiers() & Qt.AltModifier)):
-
-    #         # check if non-zero later, and act accordingly
-    #         resized = 0
-
-    #         if event.key() == Qt.Key_Up:
-    #             resized = 2
-    #         if event.key() == Qt.Key_Down:
-    #             resized = -2
-
-    #         if resized != 0:
-    #             self.subtext.render_ready = 0
-
-    #             font = self.subtext.currentFont()
-    #             font.setPointSize(font.pointSize() + resized)
-    #             self.subtext.setFont(font)
-
-    #             width_subtext = 0
-    #             for line in self.subtext.text_splitted:
-    #                 width_subtext = max(width_subtext,
-    #                                     self.subtext.fontMetrics().boundingRect(
-    #                                                                 QRect(),
-    #                                                                 Qt.AlignCenter,
-    #                                                                 line).width()
-    #                                     + 4)
-    #             height_subtext = (self.subtext.fontMetrics().height()
-    #                               * self.subtext.n_lines + 4)
-
-    #             width = width_subtext
-    #             height = height_subtext + self.stretch_pixels
-
-    #             x = (self.config.screen_width / 2) - (width / 2)
-    #             y = self.config.screen_height - height - config.bottom_spacing_pixels
-
-    #             self.setGeometry(config.x_screen + int(x),
-    #                              config.y_screen + int(y),
-    #                              width, height)
-
-    #             self.subtext.setGeometry(0, self.stretch_pixels // 2,
-    #                                      width_subtext, height_subtext)
-
-    #             self.subtext.pos_parent = self.pos()
-
-    #             self.subtext.render_ready += 1
 
     def paintEvent(self, event):
         if self.subtext.render_ready >= 1:
