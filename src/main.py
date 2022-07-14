@@ -716,38 +716,16 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     mpv = MPVInterSubs()
     # mpv.debug = True
-    # mpv.ensure_running()
-
-    # def on_sub_text_changed(value: Any = None) -> None:
-    #     # widget.subs = value if value else ''
-    #     # widget.render_subtitles()
-    #     print('on_sub_text_changed:', value)
 
     config.screen_width = app.screens()[config.n_screen].size().width()
     config.screen_height = app.screens()[config.n_screen].size().height()
     config.x_screen = app.screens()[config.n_screen].geometry().x()
     config.y_screen = app.screens()[config.n_screen].geometry().y()
 
-    shutdown = False
-
-    def on_shutdown():
-        global shutdown
-        shutdown = True
-        print("on_shutdown")
-        app.exit()
-        # mpv.close()
-
-    # mpv.register_callback("shutdown", on_shutdown)
-    mpv.register_callback("end-file", on_shutdown)
+    mpv.register_callback("end-file", lambda: app.exit())
     mpv.command("loadfile", os.path.abspath("./sample.mkv"), "replace", "pause=no")
     mpv.start_intersubs()
-    # mpv.set_property("fullscreen", True)
 
     form = ParentFrame(config)
     form.show()
     app.exec()
-    # mpv.close()
-    # while mpv.is_running():
-    #     print(f'{shutdown=}')
-    #     time.sleep(1)
-    #     print(f'{shutdown=}')
