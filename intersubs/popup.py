@@ -1,5 +1,5 @@
-from PyQt5 import QtWebEngineWidgets
-from PyQt5.QtCore import Qt
+from PyQt6 import QtWebEngineWidgets
+from PyQt6.QtCore import Qt
 
 from .handler import InterSubsHandler
 
@@ -18,7 +18,7 @@ class Popup(QtWebEngineWidgets.QWebEngineView):
         self.setMaximumHeight(400)
         self.setMaximumWidth(400)
 
-        self.setWindowFlag(Qt.X11BypassWindowManagerHint, True)
+        self.setWindowFlag(Qt.WindowType.X11BypassWindowManagerHint, True)
 
         self.zoom_rate = parent.parent.config.default_zoom_popup
         self.setZoomFactor(self.zoom_rate)

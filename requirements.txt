@@ -1,6 +1,6 @@
 pywin32
-PyQt5
-PyQtWebEngine
+PyQt6
+PyQt6-WebEngine
 mypy
 pylint
 isort

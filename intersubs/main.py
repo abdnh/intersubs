@@ -3,7 +3,7 @@
 import sys
 import warnings
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QPoint,
     QPointF,
     QRect,
@@ -12,8 +12,8 @@ from PyQt5.QtCore import (
     QUrl,
     pyqtSignal,
 )
-from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QTextCursor
-from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout, QTextEdit, QVBoxLayout
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QTextCursor
+from PyQt6.QtWidgets import QApplication, QFrame, QHBoxLayout, QTextEdit, QVBoxLayout
 
 from . import config
 from .mpv_intersubs import MPVInterSubs
@@ -34,7 +34,7 @@ class SubtitleWidget(QTextEdit):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        self.setAlignment(Qt.AlignVCenter)
+        self.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
         self.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
 
@@ -69,8 +69,8 @@ class SubtitleWidget(QTextEdit):
         # `True` corresponds to the case where there is currently no popup being shown
         self.no_popup = True
 
-        self.transparent_pen = QPen(Qt.transparent)
-        self.outline_pen = QPen(Qt.black, 8)
+        self.transparent_pen = QPen(Qt.GlobalColor.transparent)
+        self.outline_pen = QPen(Qt.GlobalColor.black, 8)
 
         # whether or not the cursor is on the QTextEdit
         self.already_in = False
@@ -165,10 +165,10 @@ class SubtitleWidget(QTextEdit):
 
             x_screen = self.parent.config.x_screen
             x_popup = cursor_top.x() - (
-                self.fontMetrics().width(
+                self.fontMetrics().horizontalAdvance(
                     self.text[char_index : char_index + self.length_highlight]
                 )
-                + self.fontMetrics().width(self.text[char_index]) // 4
+                + self.fontMetrics().horizontalAdvance(self.text[char_index]) // 4
                 if char_index < len(self.text)
                 else 0
             )
@@ -320,7 +320,7 @@ class SubtitleWidget(QTextEdit):
     def set_text_selection(self, start, end):
         cursor = self.textCursor()
         cursor.setPosition(start)
-        cursor.setPosition(end, QTextCursor.KeepAnchor)
+        cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
         self.setTextCursor(cursor)
 
 
@@ -336,7 +336,7 @@ class ParentFrame(QFrame):
         self.update_subtitles.connect(self.render_subtitles)
         self._listen_to_subtitle_change()
 
-        self.setWindowFlag(Qt.X11BypassWindowManagerHint, True)
+        self.setWindowFlag(Qt.WindowType.X11BypassWindowManagerHint, True)
 
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setWindowOpacity(0.6)
@@ -390,7 +390,9 @@ class ParentFrame(QFrame):
         self.subtext.clear()
         self.repaint()
 
-        self.subtext.setAlignment(Qt.AlignCenter)  # this should be before .show()
+        self.subtext.setAlignment(
+            Qt.AlignmentFlag.AlignCenter
+        )  # this should be before .show()
         self.show()
 
         subs2 = text
@@ -414,7 +416,7 @@ class ParentFrame(QFrame):
             width_subtext = max(
                 width_subtext,
                 self.subtext.fontMetrics()
-                .boundingRect(QRect(), Qt.AlignCenter, line)
+                .boundingRect(QRect(), Qt.AlignmentFlag.AlignCenter, line)
                 .width()
                 + 4,
             )
