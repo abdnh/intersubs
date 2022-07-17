@@ -501,8 +501,8 @@ def run(paths, app=None, mpv=None, handler=None) -> None:
 
 
 def main() -> None:
-    path = sys.argv[1] if len(sys.argv) >= 2 else None
-    run([path])
+    paths = [sys.argv[1]] if len(sys.argv) >= 2 else []
+    run(paths)
 
 
 if __name__ == "__main__":
