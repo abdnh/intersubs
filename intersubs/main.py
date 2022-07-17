@@ -13,7 +13,13 @@ from PyQt6.QtCore import (
     pyqtSignal,
 )
 from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QTextCursor
-from PyQt6.QtWidgets import QApplication, QFrame, QHBoxLayout, QTextEdit, QVBoxLayout
+from PyQt6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 from . import config
 from .mpv_intersubs import MPVInterSubs
@@ -22,8 +28,9 @@ from .handler import InterSubsHandler
 
 
 class SubtitleWidget(QTextEdit):
-    def __init__(self, parent, mpv, handler: InterSubsHandler):
-        super().__init__()
+    def __init__(self, parent: "ParentFrame", mpv, handler: InterSubsHandler):
+        super().__init__(parent=parent)
+        self.parent_frame = parent
         self.mpv = mpv
         self.handler = handler
 
@@ -50,15 +57,16 @@ class SubtitleWidget(QTextEdit):
 
         self.previous_lookup = ""
 
-        self.parent = parent
         self.pos_parent = QPoint(0, 0)
 
-        self.popup = Popup(self, self.handler)
-        self.popup.move(self.parent.config.x_screen, self.parent.config.y_screen)
+        self.popup = Popup(self, config, self.handler)
+        self.popup.move(
+            self.parent_frame.config.x_screen, self.parent_frame.config.y_screen
+        )
         self.popup.resize(500, 400)
 
         font = self.currentFont()
-        font.setPointSize(self.parent.config.default_font_point_size)
+        font.setPointSize(self.parent_frame.config.default_font_point_size)
         font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
         self.setFont(font)
 
@@ -141,9 +149,13 @@ class SubtitleWidget(QTextEdit):
         ):  # it could be that we exited the subtitles before getting there
             # we need this to take into account the zoom setting previously set
 
-            width = self.popup.base_width * (self.parent.config.default_zoom_popup) + 5
+            width = (
+                self.popup.base_width * (self.parent_frame.config.default_zoom_popup)
+                + 5
+            )
             height = (
-                self.popup.base_height * (self.parent.config.default_zoom_popup) + 5
+                self.popup.base_height * (self.parent_frame.config.default_zoom_popup)
+                + 5
             )
 
             # the pop up is shown above the subtitles, and it should not excess the
@@ -163,7 +175,7 @@ class SubtitleWidget(QTextEdit):
             # absolute coordinate of the top left of the current selection
             cursor_top = self.viewport().mapToGlobal(QPoint(rect.left(), rect.top()))
 
-            x_screen = self.parent.config.x_screen
+            x_screen = self.parent_frame.config.x_screen
             x_popup = cursor_top.x() - (
                 self.fontMetrics().horizontalAdvance(
                     self.text[char_index : char_index + self.length_highlight]
@@ -174,8 +186,8 @@ class SubtitleWidget(QTextEdit):
             )
 
             # make sure we don't go out of the screen
-            if x_popup + width >= (x_screen + self.parent.config.screen_width):
-                x_popup = x_screen + self.parent.config.screen_width - width
+            if x_popup + width >= (x_screen + self.parent_frame.config.screen_width):
+                x_popup = x_screen + self.parent_frame.config.screen_width - width
 
             y_popup = max(0, self.pos_parent.y() - height)
 
@@ -203,7 +215,7 @@ class SubtitleWidget(QTextEdit):
         )
 
         clicked_word = self.handler.lookup_word_from_index(self.text, char_index)
-        print(f"{clicked_word=} {self.previous_lookup=}")
+        # print(f"{clicked_word=} {self.previous_lookup=}")
         if not clicked_word:
             return
         if (
@@ -224,8 +236,8 @@ class SubtitleWidget(QTextEdit):
             # the popup no matter the size of the window. We make it bigger so that
             # the `scrollWidth` value we get later makes sense
             resize_value = (
-                self.parent.config.x_screen
-                + self.parent.config.screen_width
+                self.parent_frame.config.x_screen
+                + self.parent_frame.config.screen_width
                 - self.popup.pos().x()
             )
             self.popup.resize(resize_value, self.popup.height())
@@ -339,6 +351,7 @@ class ParentFrame(QFrame):
         self.setWindowFlag(Qt.WindowType.X11BypassWindowManagerHint, True)
 
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self.setWindowOpacity(0.6)
         self.setStyleSheet("QWidget{background: #000000}")
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
@@ -369,7 +382,6 @@ class ParentFrame(QFrame):
                 return
             else:
                 subs = message
-            print("on_sub_text_changed:", subs)
             # hide subs when mpv isn't in fullscreen
             to_hide = not self.mpv.get_property("fullscreen") or not subs
             self.update_subtitles.emit(to_hide, subs)
@@ -451,9 +463,10 @@ class ParentFrame(QFrame):
 
         super().paintEvent(event)
 
-
-def run(path=None, mpv=None, handler=None) -> None:
-    app = QApplication(sys.argv)
+def run(paths, app=None, mpv=None, handler=None) -> None:
+    is_external_app = bool(app)
+    if not app:
+        app = QApplication(sys.argv)
     if not mpv:
         mpv = MPVInterSubs()
     # mpv.debug = True
@@ -463,38 +476,33 @@ def run(path=None, mpv=None, handler=None) -> None:
     config.x_screen = app.screens()[config.n_screen].geometry().x()
     config.y_screen = app.screens()[config.n_screen].geometry().y()
 
-    def on_end_file(message) -> None:
-        print("on_end_file")
-        print(f"{message=}")
-        if message["reason"] in ("quit", "stop", "eof"):
-            mpv.close()
-            sys.exit(app.exit())
-        else:
-            mpv.stop_intersubs()
-
     def on_file_loaded(message) -> None:
         print("on_file_loaded")
         mpv.start_intersubs()
 
-    # def on_shutdown():
-    #     print("on_shutdown")
-    #     app.exit()
+    def on_end_file(message) -> None:
+        print("on_end_file")
+        if message["reason"] in ("quit", "stop"):
+            frame.deleteLater()
+            if not is_external_app:
+                app.exit()
 
     mpv.register_callback("file-loaded", on_file_loaded)
     mpv.register_callback("end-file", on_end_file)
-    # FIXME: the shutdown event is apparently never received by programs using the JSON IPC
+    # FIXME: the shutdown event is apparently not always received by programs using the JSON IPC
     # mpv.register_callback("shutdown", on_shutdown)
-    if path:
-        mpv.command("loadfile", path, "replace", "pause=no")
+    for path in paths:
+        mpv.command("loadfile", path, "append-play")
     if not handler:
         handler = InterSubsHandler(mpv)
-    form = ParentFrame(config, mpv, handler)
-    app.exec()
+    frame = ParentFrame(config, mpv, handler)
+    if not is_external_app:
+        app.exec()
 
 
 def main() -> None:
     path = sys.argv[1] if len(sys.argv) >= 2 else None
-    run(path)
+    run([path])
 
 
 if __name__ == "__main__":

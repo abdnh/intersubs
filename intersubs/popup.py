@@ -5,8 +5,8 @@ from .handler import InterSubsHandler
 
 
 class Popup(QtWebEngineWidgets.QWebEngineView):
-    def __init__(self, parent, handler: InterSubsHandler):
-        super(QtWebEngineWidgets.QWebEngineView, self).__init__()
+    def __init__(self, parent, config, handler: InterSubsHandler):
+        super(QtWebEngineWidgets.QWebEngineView, self).__init__(parent=parent)
         self.handler = handler
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setWindowOpacity(1)
@@ -20,5 +20,5 @@ class Popup(QtWebEngineWidgets.QWebEngineView):
 
         self.setWindowFlag(Qt.WindowType.X11BypassWindowManagerHint, True)
 
-        self.zoom_rate = parent.parent.config.default_zoom_popup
+        self.zoom_rate = config.default_zoom_popup
         self.setZoomFactor(self.zoom_rate)
