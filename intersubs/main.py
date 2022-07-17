@@ -347,6 +347,7 @@ class ParentFrame(QFrame):
 
         self.update_subtitles.connect(self.render_subtitles)
         self._listen_to_subtitle_change()
+        self._listen_to_focus_state()
 
         self.setWindowFlag(Qt.WindowType.X11BypassWindowManagerHint, True)
 
@@ -386,6 +387,16 @@ class ParentFrame(QFrame):
             self.update_subtitles.emit(to_hide, subs)
 
         self.mpv.register_property_callback("sub-text", on_sub_text_changed)
+
+    def _listen_to_focus_state(self):
+        def on_focused_change(focused):
+            try:
+                subs = self.mpv.get_property("sub-text")
+            except:
+                subs = ""
+            self.update_subtitles.emit(not focused, subs)
+
+        self.mpv.register_property_callback("focused", on_focused_change)
 
     def render_subtitles(self, to_hide, text=""):
         self.subtext.render_ready = 0
