@@ -52,7 +52,6 @@ class MPVInterSubs(MPV):
         self.save_current_subs_settings()
         self.set_property("sub-visibility", "yes")
         self.set_property("sub-ass-override", "force")
-        self.set_property("fullscreen", True)
         self.hide_native_subs()
         return True
 

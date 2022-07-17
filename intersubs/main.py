@@ -382,8 +382,7 @@ class ParentFrame(QFrame):
                 return
             else:
                 subs = message
-            # hide subs when mpv isn't in fullscreen
-            to_hide = not self.mpv.get_property("fullscreen") or not subs
+            to_hide = not subs
             self.update_subtitles.emit(to_hide, subs)
 
         self.mpv.register_property_callback("sub-text", on_sub_text_changed)
@@ -462,6 +461,7 @@ class ParentFrame(QFrame):
             p.fillRect(event.rect(), QColor(0, 0, 0, 128))
 
         super().paintEvent(event)
+
 
 def run(paths, app=None, mpv=None, handler=None) -> None:
     is_external_app = bool(app)
