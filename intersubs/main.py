@@ -89,7 +89,9 @@ class SubtitleWidget(QTextEdit):
         # number of characters to highlight when the popup is shown
         self.length_highlight = 0
 
-        self.popup.load(QUrl.fromLocalFile(self.handler.get_popup_html_path()))
+        self.popup_html_path = self.handler.get_popup_html_path()
+        if self.popup_html_path:
+            self.popup.load(QUrl.fromLocalFile(self.popup_html_path))
 
         # set to True when a warning message to show only once has been shown
         self.warning_message_unique_shown = False
@@ -228,8 +230,7 @@ class SubtitleWidget(QTextEdit):
             self.setUpdatesEnabled(True)  # we needs updates for highlighting text
             self.no_popup = False  # a popup is likely to be shown, disable highlighting
 
-        show_popup = True
-        if show_popup is True:
+        if self.popup_html_path:
             self.char_index_popup = char_index
 
             # this resize is "needed" as I could so far not set the width of

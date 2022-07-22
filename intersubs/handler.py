@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import os
 from typing import TYPE_CHECKING
@@ -26,7 +27,7 @@ class InterSubsHandler:
         word = self.lookup_word_from_index(text, idx)
         self.mpv.command("show-text", word)
 
-    def get_popup_html_path(self) -> str:
+    def get_popup_html_path(self) -> str | None:
         return os.path.join(os.path.dirname(__file__), "popup", "index.html")
 
     def on_popup_shown(self, popup: "Popup", text: str) -> None:
