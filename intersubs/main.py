@@ -482,6 +482,7 @@ def run(paths, app=None, mpv=None, handler=None) -> None:
     if not mpv:
         mpv = MPVInterSubs()
     # mpv.debug = True
+    mpv.set_property("script-opts", "osc-deadzonesize=1")
 
     config.screen_width = app.screens()[config.n_screen].size().width()
     config.screen_height = app.screens()[config.n_screen].size().height()
