@@ -10,5 +10,5 @@ This is not a user script like the aforementioned projects; It's a standalone pr
 
 Currently planned changes are the following:
 
-- [x] Support for Windows (provided by [mpv.py](./src/mpv.py), wich is copied from [Anki](https://github.com/ankitects/anki/blob/main/qt/aqt/mpv.py)).
+- [x] Support for Windows (provided by [mpv.py](./src/mpv.py), which is copied from [Anki](https://github.com/ankitects/anki/blob/main/qt/aqt/mpv.py)).
 - [ ] Make the program pluggable into other programs, with support for custom click and hover actions.
