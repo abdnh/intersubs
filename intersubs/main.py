@@ -376,7 +376,7 @@ class ParentFrame(QFrame):
         self.subtitles_vbox.addStretch()
 
         # we add some pixels to the semi-transparent background, up and down
-        self.stretch_pixels = 20
+        self.stretch_pixels = 1
 
     def _listen_to_subtitle_change(self):
         def on_sub_text_changed(message):
