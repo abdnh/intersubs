@@ -446,7 +446,8 @@ class ParentFrame(QFrame):
 
         height_subtext = self.subtext.fontMetrics().height() * self.subtext.n_lines + 4
 
-        width = width_subtext
+        mpv_width = self.mpv.get_property('osd-width') * (self.mpv.get_property('osd-bar-w') / 100)
+        width = width_subtext if width_subtext < mpv_width else mpv_width
         height = height_subtext + self.stretch_pixels
 
         x = (self.config.screen_width / 2) - (width / 2)
