@@ -517,7 +517,7 @@ def run(paths, app=None, mpv=None, handler=None) -> None:
     if not handler:
         handler = InterSubsHandler(mpv)
     frame = ParentFrame(config, mpv, handler)
-    if not is_external_app:
+    if not is_external_app and paths:
         app.exec()
 
 
