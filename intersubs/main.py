@@ -429,13 +429,20 @@ class ParentFrame(QFrame):
 
         self.subtext.len_text = len(subs2)
         self.subtext.text = subs2
-        self.subtext.text_splitted = subs2.split("\n")
-        self.subtext.n_lines = len(self.subtext.text_splitted)
+        max_sub_line_words = self.config.max_sub_line_words
+        split_text = []
+        for i, line in enumerate(subs2.split("\n")):
+            words = line.split()
+            split_lines = [' '.join(words[i:i+8]) for i in range(0, len(words), max_sub_line_words)]
+            split_text.extend(split_lines)
+
+        self.subtext.split_text = split_text
+        self.subtext.n_lines = len(self.subtext.split_text)
 
         # the longest line is not necessarily the one with the most characters
         # as we may use non-monospace fonts
         width_subtext = 0
-        for line in self.subtext.text_splitted:
+        for line in self.subtext.split_text:
             width_subtext = max(
                 width_subtext,
                 self.subtext.fontMetrics()
@@ -461,7 +468,7 @@ class ParentFrame(QFrame):
             0, self.stretch_pixels // 2, width_subtext, height_subtext
         )
 
-        for line in self.subtext.text_splitted:
+        for line in self.subtext.split_text:
             self.subtext.append(line)
 
         self.subtext.pos_parent = self.pos()

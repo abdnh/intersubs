@@ -20,5 +20,8 @@ bottom_spacing_pixels = 100
 # For example, if you have 3 screens, this number could be either 0, 1 or 2.
 n_screen = 0
 
+# Subtitle lines with more words than the specified number will be split
+max_sub_line_words = 8
+
 # Ideally, more parameters could be added here, as interSubs does:
 # https://github.com/oltodosel/interSubs/blob/master/interSubs_config.py
