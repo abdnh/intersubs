@@ -472,6 +472,8 @@ class ParentFrame(QFrame):
 
 
 def run(paths, app=None, mpv=None, handler=None) -> None:
+    if not paths:
+        return
     is_external_app = bool(app)
     if not app:
         app = QApplication(sys.argv)
