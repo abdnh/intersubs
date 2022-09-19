@@ -89,10 +89,6 @@ class SubtitleWidget(QTextEdit):
         # number of characters to highlight when the popup is shown
         self.length_highlight = 0
 
-        self.popup_html_path = self.handler.get_popup_html_path()
-        if self.popup_html_path:
-            self.popup.load(QUrl.fromLocalFile(self.popup_html_path))
-
         # set to True when a warning message to show only once has been shown
         self.warning_message_unique_shown = False
 
@@ -121,29 +117,20 @@ class SubtitleWidget(QTextEdit):
             self.callback_popup_height,
         )
 
-        self.handler.on_popup_shown(self.popup, self.previous_lookup)
-
     def callback_popup_height(self, new_height):
-        if new_height != "Cannot read property 'scrollHeight' of null":
+        try:
+            new_height = int(new_height)
             self.popup.base_height = new_height
-
             self.show_popup()
-        else:
-            warnings.warn(
-                "Popup page loading has failed and this should not happen."
-                + " Please fill a bug report if this gets inconvenient.",
-                stacklevel=2,
-            )
+        except:
+            self.popup.base_height = 0
 
     def callback_popup_width(self, new_width):
-        if new_width != "Cannot read property 'scrollHeight' of null":
+        try:
+            new_width = int(new_width)
             self.popup.base_width = new_width
-        else:
-            warnings.warn(
-                "Popup page loading has failed and this should not happen."
-                + " Please fill a bug report if this gets inconvenient.",
-                stacklevel=2,
-            )
+        except:
+            self.popup.base_width = 0
 
     def show_popup(self):
         if (
@@ -230,7 +217,7 @@ class SubtitleWidget(QTextEdit):
             self.setUpdatesEnabled(True)  # we needs updates for highlighting text
             self.no_popup = False  # a popup is likely to be shown, disable highlighting
 
-        if self.popup_html_path:
+        if self.handler.on_popup_will_show(self.popup, clicked_word):
             self.char_index_popup = char_index
 
             # this resize is "needed" as I could so far not set the width of
