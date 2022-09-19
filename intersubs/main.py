@@ -60,6 +60,7 @@ class SubtitleWidget(QTextEdit):
         self.pos_parent = QPoint(0, 0)
 
         self.popup = Popup(self, config, self.handler)
+        self.handler.on_popup_created(self.popup)
         self.popup.move(
             self.parent_frame.config.x_screen, self.parent_frame.config.y_screen
         )
