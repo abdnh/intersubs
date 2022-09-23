@@ -139,10 +139,9 @@ class SubtitleWidget(QTextEdit):
             if x_popup + width >= (x_screen + self.parent_frame.config.screen_width):
                 x_popup = x_screen + self.parent_frame.config.screen_width - width
 
-            y_popup = max(0, self.pos_parent.y() - height)
-
-            # This is a workaround to make the poup appear directly above the subs
-            # FIXME: remove this once I understand the code better and find a better way to handle this
+            y_popup = cursor_top.y() - height
+            # # This is a workaround to make the poup appear directly above the subs
+            # # FIXME: remove this once I understand the code better and find a better way to handle this
             y_popup += 100
 
             # we need to be careful to never cover the QTextEdit when changing popup
