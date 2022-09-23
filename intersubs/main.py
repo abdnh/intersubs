@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
 import sys
-import warnings
 
 from PyQt6.QtCore import (
     QPoint,
@@ -9,10 +8,9 @@ from PyQt6.QtCore import (
     QRect,
     QSize,
     Qt,
-    QUrl,
     pyqtSignal,
 )
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QTextCursor
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QTextCursor, QMouseEvent, QCursor
 from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
@@ -64,7 +62,7 @@ class SubtitleWidget(QTextEdit):
         self.popup.move(
             self.parent_frame.config.x_screen, self.parent_frame.config.y_screen
         )
-        self.popup.resize(500, 400)
+        self.popup.resize(600, 500)
 
         font = self.currentFont()
         font.setPointSize(self.parent_frame.config.default_font_point_size)
@@ -94,44 +92,9 @@ class SubtitleWidget(QTextEdit):
         self.warning_message_unique_shown = False
 
     def after_popup_loaded(self):
-        self.popup.page().runJavaScript(
-            """
-                    try {
-                    document.body.scrollWidth;
-                    }
-                    catch(err) {
-                        err.message;
-                    }
-                    """,
-            self.callback_popup_width,
-        )
-
-        self.popup.page().runJavaScript(
-            """
-                    try {
-                    document.body.scrollHeight;
-                    }
-                    catch(err) {
-                        err.message;
-                    }
-                    """,
-            self.callback_popup_height,
-        )
-
-    def callback_popup_height(self, new_height):
-        try:
-            new_height = int(new_height)
-            self.popup.base_height = new_height
-            self.show_popup()
-        except:
-            self.popup.base_height = 0
-
-    def callback_popup_width(self, new_width):
-        try:
-            new_width = int(new_width)
-            self.popup.base_width = new_width
-        except:
-            self.popup.base_width = 0
+        self.popup.base_height = 500
+        self.popup.base_width = 600
+        self.show_popup()
 
     def show_popup(self):
         if (
@@ -148,12 +111,9 @@ class SubtitleWidget(QTextEdit):
                 + 5
             )
 
-            # the pop up is shown above the subtitles, and it should not excess the
+            # the pop up is shown above the subtitles, and it should not exceed the
             # available space there, namely `self.pos_parent.y()`
             height = min(self.pos_parent.y(), height)
-
-            width = int(width)
-            height = int(height)
 
             char_index = self.char_index_popup
             if char_index < 0 or len(self.text) <= char_index:
@@ -180,6 +140,10 @@ class SubtitleWidget(QTextEdit):
                 x_popup = x_screen + self.parent_frame.config.screen_width - width
 
             y_popup = max(0, self.pos_parent.y() - height)
+
+            # This is a workaround to make the poup appear directly above the subs
+            # FIXME: remove this once I understand the code better and find a better way to handle this
+            y_popup += 100
 
             # we need to be careful to never cover the QTextEdit when changing popup
             if self.popup.height() > height:
