@@ -338,11 +338,12 @@ class ParentFrame(QFrame):
 
     def _listen_to_focus_state(self):
         def on_focused_change(focused):
-            try:
-                subs = self.mpv.get_property("sub-text")
-            except:
-                subs = ""
-            self.update_subtitles.emit(not focused, subs)
+            if not self.subtext.popup.hasFocus():
+                try:
+                    subs = self.mpv.get_property("sub-text")
+                except:
+                    subs = ""
+                self.update_subtitles.emit(not focused, subs)
 
         self.mpv.register_property_callback("focused", on_focused_change)
 
