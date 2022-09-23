@@ -206,14 +206,12 @@ class SubtitleWidget(QTextEdit):
         if not self.already_in:
             self.already_in = True
             self.setUpdatesEnabled(True)
-            self.previously_paused = self.mpv.get_property("pause")
             self.mpv.set_property("pause", True)
 
         super().enterEvent(event)
 
     def leaveEvent(self, event):
-        if not self.previously_paused:
-            self.mpv.set_property("pause", False)
+        self.mpv.set_property("pause", False)
 
         self.already_in = False
 
@@ -224,9 +222,6 @@ class SubtitleWidget(QTextEdit):
 
         # reset it in case we want to look back at the same position
         self.previous_lookup = ""
-
-        # hiding popup in case it was shown
-        self.popup.hide()
 
         super().leaveEvent(event)
 

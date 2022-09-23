@@ -1,12 +1,18 @@
+from typing import TYPE_CHECKING
 from PyQt6 import QtWebEngineWidgets
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QEvent
+from PyQt6.QtGui import QEnterEvent
 
 from .handler import InterSubsHandler
 
+if TYPE_CHECKING:
+    from .main import SubtitleWidget
+
 
 class Popup(QtWebEngineWidgets.QWebEngineView):
-    def __init__(self, parent, config, handler: InterSubsHandler):
-        super(QtWebEngineWidgets.QWebEngineView, self).__init__(parent=parent)
+    def __init__(self, subtext: "SubtitleWidget", config, handler: InterSubsHandler):
+        super(QtWebEngineWidgets.QWebEngineView, self).__init__(parent=subtext)
+        self.subtext = subtext
         self.handler = handler
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setWindowOpacity(1)
@@ -22,3 +28,13 @@ class Popup(QtWebEngineWidgets.QWebEngineView):
 
         self.zoom_rate = config.default_zoom_popup
         self.setZoomFactor(self.zoom_rate)
+
+    def enterEvent(self, event: QEnterEvent) -> None:
+        self.show()
+        self.subtext.mpv.set_property("pause", True)
+        return super().enterEvent(event)
+
+    def leaveEvent(self, event: QEvent) -> None:
+        self.hide()
+        self.subtext.mpv.set_property("pause", False)
+        return super().leaveEvent(event)
