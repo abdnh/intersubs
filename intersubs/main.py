@@ -454,6 +454,8 @@ def run(paths, app=None, mpv=None, handler=None) -> None:
         print("on_end_file")
         if message["reason"] in ("quit", "stop"):
             frame.deleteLater()
+            # Fix an issue where the subtitle widget gets stuck when intersubs is used with an external app
+            app.processEvents()
             if not is_external_app:
                 app.exit()
 
