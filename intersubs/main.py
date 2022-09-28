@@ -380,7 +380,10 @@ class ParentFrame(QFrame):
         split_text = []
         for i, line in enumerate(subs2.split("\n")):
             words = line.split()
-            split_lines = [' '.join(words[i:i+8]) for i in range(0, len(words), max_sub_line_words)]
+            split_lines = [
+                " ".join(words[i : i + 8])
+                for i in range(0, len(words), max_sub_line_words)
+            ]
             split_text.extend(split_lines)
 
         self.subtext.split_text = split_text
@@ -400,7 +403,9 @@ class ParentFrame(QFrame):
 
         height_subtext = self.subtext.fontMetrics().height() * self.subtext.n_lines + 4
 
-        mpv_width = self.mpv.get_property('osd-width') * (self.mpv.get_property('osd-bar-w') / 100)
+        mpv_width = self.mpv.get_property("osd-width") * (
+            self.mpv.get_property("osd-bar-w") / 100
+        )
         width = width_subtext if width_subtext < mpv_width else mpv_width
         height = height_subtext + self.stretch_pixels
 
@@ -447,11 +452,9 @@ def run(paths, app=None, mpv=None, handler=None) -> None:
     config.y_screen = app.screens()[config.n_screen].geometry().y()
 
     def on_file_loaded(message) -> None:
-        print("on_file_loaded")
         mpv.start_intersubs()
 
     def on_end_file(message) -> None:
-        print("on_end_file")
         if message["reason"] in ("quit", "stop"):
             frame.deleteLater()
             # Fix an issue where the subtitle widget gets stuck when intersubs is used with an external app
@@ -468,7 +471,7 @@ def run(paths, app=None, mpv=None, handler=None) -> None:
     if not handler:
         handler = InterSubsHandler(mpv)
     frame = ParentFrame(config, mpv, handler)
-    if not is_external_app and paths:
+    if not is_external_app:
         app.exec()
 
 
