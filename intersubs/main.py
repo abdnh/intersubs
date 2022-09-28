@@ -9,6 +9,7 @@ from PyQt6.QtCore import (
     QSize,
     Qt,
     pyqtSignal,
+    QMargins,
 )
 from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QTextCursor, QMouseEvent, QCursor
 from PyQt6.QtWidgets import (
@@ -210,6 +211,12 @@ class SubtitleWidget(QTextEdit):
         super().enterEvent(event)
 
     def leaveEvent(self, event):
+        pos = self.cursor().pos()
+        pos = self.popup.mapFrom(self, pos)
+        rect = self.popup.rect().marginsAdded(QMargins(5, 5, 5, 5))
+        if not rect.contains(pos):
+            self.popup.hide()
+
         self.mpv.set_property("pause", False)
 
         self.already_in = False
