@@ -292,10 +292,6 @@ class ParentFrame(QFrame):
         self.mpv = mpv
         self.handler = handler
 
-        self.update_subtitles.connect(self.render_subtitles)
-        self._listen_to_subtitle_change()
-        self._listen_to_focus_state()
-
         self.setWindowFlag(Qt.WindowType.X11BypassWindowManagerHint, True)
 
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
@@ -323,6 +319,10 @@ class ParentFrame(QFrame):
 
         # we add some pixels to the semi-transparent background, up and down
         self.stretch_pixels = 1
+
+        self.update_subtitles.connect(self.render_subtitles)
+        self._listen_to_subtitle_change()
+        self._listen_to_focus_state()
 
     def _listen_to_subtitle_change(self):
         def on_sub_text_changed(message):
