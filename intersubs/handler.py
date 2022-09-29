@@ -15,14 +15,19 @@ class InterSubsHandler:
         self.mpv = mpv
 
     def lookup_word_from_index(self, text: str, idx: int) -> str:
-        try:
-            lidx = text[: idx + 1].rindex(" ") + 1
-        except ValueError:
-            lidx = 0
-        try:
-            ridx = idx + text[idx:].index(" ")
-        except ValueError:
-            ridx = len(text)
+        if idx >= len(text):
+            return ""
+        seps = [" ", "\t", "\n"]
+        lidx = 0
+        for i in range(idx, -1, -1):
+            if text[i] in seps:
+                lidx = i
+                break
+        ridx = len(text)
+        for i in range(idx, len(text)):
+            if text[i] in seps:
+                ridx = i
+                break
         return text[lidx:ridx]
 
     def on_sub_clicked(self, text: str, idx: int) -> None:

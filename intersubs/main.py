@@ -116,8 +116,9 @@ class SubtitleWidget(QTextEdit):
             # available space there, namely `self.pos_parent.y()`
             height = min(self.pos_parent.y(), height)
 
+            text = self.document().toPlainText()
             char_index = self.char_index_popup
-            if char_index < 0 or len(self.text) <= char_index:
+            if char_index < 0 or len(text) <= char_index:
                 return
             self.set_text_selection(char_index, char_index + self.length_highlight)
 
@@ -129,10 +130,10 @@ class SubtitleWidget(QTextEdit):
             x_screen = self.parent_frame.config.x_screen
             x_popup = cursor_top.x() - (
                 self.fontMetrics().horizontalAdvance(
-                    self.text[char_index : char_index + self.length_highlight]
+                    text[char_index : char_index + self.length_highlight]
                 )
-                + self.fontMetrics().horizontalAdvance(self.text[char_index]) // 4
-                if char_index < len(self.text)
+                + self.fontMetrics().horizontalAdvance(text[char_index]) // 4
+                if char_index < len(text)
                 else 0
             )
 
@@ -157,25 +158,26 @@ class SubtitleWidget(QTextEdit):
 
         self.no_popup = True
 
-    def mouseMoveEvent(self, event):
-        point_position = event.pos()  # this is relative coordinates in the QTextEdit
+    def mouseMoveEvent(self, event: QMouseEvent):
         char_index = (
             self.document()
             .documentLayout()
             .hitTest(
-                QPointF(point_position.x(), point_position.y()),
+                event.position(),
                 Qt.HitTestAccuracy.ExactHit,
             )
         )
 
-        clicked_word = self.handler.lookup_word_from_index(self.text, char_index)
-        # print(f"{clicked_word=} {self.previous_lookup=}")
+        text = self.document().toPlainText()
+        # print(f"{text=} {char_index=} {self.previous_lookup=}")
+        clicked_word = self.handler.lookup_word_from_index(text, char_index)
+        # print(f"{clicked_word=}")
         if not clicked_word:
             return
         if (
             clicked_word != self.previous_lookup
             and 0 <= char_index
-            and char_index < self.len_text
+            and char_index < len(text)
         ):
 
             self.previous_lookup = clicked_word
@@ -231,18 +233,17 @@ class SubtitleWidget(QTextEdit):
 
         super().leaveEvent(event)
 
-    def mousePressEvent(self, event):
-        point_position = event.pos()  # this is relative coordinates in the QTextEdit
+    def mousePressEvent(self, event: QMouseEvent):
         char_index = (
             self.document()
             .documentLayout()
             .hitTest(
-                QPointF(point_position.x(), point_position.y()),
+                event.position(),
                 Qt.HitTestAccuracy.ExactHit,
             )
         )
 
-        self.handler.on_sub_clicked(self.text, char_index)
+        self.handler.on_sub_clicked(self.document().toPlainText(), char_index)
 
         super().mousePressEvent(event)
 
