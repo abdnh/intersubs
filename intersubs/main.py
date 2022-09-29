@@ -469,6 +469,7 @@ def run(paths, app=None, mpv=None, handler=None) -> None:
             app.processEvents()
             if not is_external_app:
                 app.exit()
+            handler.on_shutdown()
 
     mpv.register_callback("file-loaded", on_file_loaded)
     mpv.register_callback("end-file", on_end_file)

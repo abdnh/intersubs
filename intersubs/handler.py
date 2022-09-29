@@ -49,3 +49,6 @@ class InterSubsHandler:
             % json.dumps(text)
         )
         return True
+
+    def on_shutdown(self) -> None:
+        pass
