@@ -2,28 +2,14 @@
 
 import sys
 
-from PyQt6.QtCore import (
-    QPoint,
-    QPointF,
-    QRect,
-    QSize,
-    Qt,
-    pyqtSignal,
-    QMargins,
-)
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QTextCursor, QMouseEvent, QCursor
-from PyQt6.QtWidgets import (
-    QApplication,
-    QFrame,
-    QHBoxLayout,
-    QTextEdit,
-    QVBoxLayout,
-)
+from PyQt6.QtCore import QMargins, QPoint, QRect, QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QMouseEvent, QPainter, QPen, QTextCursor
+from PyQt6.QtWidgets import QApplication, QFrame, QHBoxLayout, QTextEdit, QVBoxLayout
 
 from . import config
+from .handler import InterSubsHandler
 from .mpv_intersubs import MPVInterSubs
 from .popup import Popup
-from .handler import InterSubsHandler
 
 
 class SubtitleWidget(QTextEdit):
@@ -88,9 +74,6 @@ class SubtitleWidget(QTextEdit):
 
         # number of characters to highlight when the popup is shown
         self.length_highlight = 0
-
-        # set to True when a warning message to show only once has been shown
-        self.warning_message_unique_shown = False
 
     def after_popup_loaded(self):
         self.popup.base_height = 500
