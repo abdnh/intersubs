@@ -15,7 +15,7 @@ class InterSubsHandler:
         self.mpv = mpv
 
     def lookup_word_from_index(self, text: str, idx: int) -> str:
-        if idx >= len(text):
+        if idx >= len(text) or idx < 0:
             return ""
         seps = [" ", "\t", "\n"]
         lidx = 0
