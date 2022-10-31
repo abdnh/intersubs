@@ -2,14 +2,30 @@
 
 import sys
 
-from PyQt6.QtCore import QMargins, QPoint, QRect, QSize, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QMouseEvent, QPainter, QPen, QTextCursor
-from PyQt6.QtWidgets import QApplication, QFrame, QHBoxLayout, QTextEdit, QVBoxLayout
-
 from . import config
 from .handler import InterSubsHandler
 from .mpv_intersubs import MPVInterSubs
 from .popup import Popup
+
+from .qt import (
+    QApplication,
+    QColor,
+    QFont,
+    QFrame,
+    QHBoxLayout,
+    QMargins,
+    QMouseEvent,
+    QPainter,
+    QPen,
+    QPoint,
+    QRect,
+    QSize,
+    Qt,
+    QTextCursor,
+    QTextEdit,
+    QVBoxLayout,
+    pyqtSignal,
+)
 
 
 class SubtitleWidget(QTextEdit):
@@ -146,7 +162,7 @@ class SubtitleWidget(QTextEdit):
             self.document()
             .documentLayout()
             .hitTest(
-                event.position(),
+                event.pos(),
                 Qt.HitTestAccuracy.ExactHit,
             )
         )
@@ -221,7 +237,7 @@ class SubtitleWidget(QTextEdit):
             self.document()
             .documentLayout()
             .hitTest(
-                event.position(),
+                event.pos(),
                 Qt.HitTestAccuracy.ExactHit,
             )
         )

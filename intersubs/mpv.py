@@ -1,3 +1,20 @@
+from __future__ import annotations
+
+import inspect
+import json
+import os
+import select
+import socket
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+from distutils.spawn import \
+    find_executable  # pylint: disable=import-error,no-name-in-module
+from queue import Empty, Full, Queue
+from typing import Optional
+
 # Adapted from https://github.com/ankitects/anki/blob/main/qt/aqt/mpv.py
 
 # ------------------------------------------------------------------------------
@@ -28,21 +45,6 @@
 
 # pylint: disable=raise-missing-from
 
-import inspect
-import json
-import os
-import select
-import socket
-import subprocess
-import sys
-import tempfile
-import threading
-import time
-from distutils.spawn import (  # pylint: disable=import-error,no-name-in-module
-    find_executable,
-)
-from queue import Empty, Full, Queue
-from typing import Optional
 
 
 is_win = sys.platform.startswith("win32")

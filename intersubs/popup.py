@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING
-from PyQt6 import QtWebEngineWidgets
-from PyQt6.QtCore import Qt, QEvent
-from PyQt6.QtGui import QEnterEvent
+
+from .qt import QWebEngineView, Qt, QEvent, QEnterEvent
 
 from .handler import InterSubsHandler
 
@@ -9,9 +8,9 @@ if TYPE_CHECKING:
     from .main import SubtitleWidget
 
 
-class Popup(QtWebEngineWidgets.QWebEngineView):
+class Popup(QWebEngineView):
     def __init__(self, subtext: "SubtitleWidget", config, handler: InterSubsHandler):
-        super(QtWebEngineWidgets.QWebEngineView, self).__init__(parent=subtext)
+        super(QWebEngineView, self).__init__(parent=subtext)
         self.subtext = subtext
         self.handler = handler
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)

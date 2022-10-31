@@ -1,12 +1,14 @@
 from __future__ import annotations
+
 import json
 import os
 from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import QUrl
+from .qt import QUrl
 
 if TYPE_CHECKING:
     from .popup import Popup
+
 from .mpv_intersubs import MPVInterSubs
 
 

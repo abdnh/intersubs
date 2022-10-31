@@ -13,5 +13,9 @@ setup(
         "Operating System :: OS Independent",
     ],
     packages=["intersubs"],
-    install_requires=["pywin32", "PyQt6", "PyQt6-WebEngine"],
+    install_requires=["pywin32"],
+    extras_require={
+        "qt5": ["pyqt5", "PyQtWebEngine"],
+        "qt6": ["PyQt6", "PyQt6-WebEngine"],
+    },
 )
