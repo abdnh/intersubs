@@ -25,6 +25,7 @@ from .qt import (
     QTextEdit,
     QVBoxLayout,
     pyqtSignal,
+    QPointF,
 )
 
 
@@ -162,7 +163,7 @@ class SubtitleWidget(QTextEdit):
             self.document()
             .documentLayout()
             .hitTest(
-                event.pos(),
+                QPointF(float(event.pos().x()), float(event.pos().y())),
                 Qt.HitTestAccuracy.ExactHit,
             )
         )
@@ -237,7 +238,7 @@ class SubtitleWidget(QTextEdit):
             self.document()
             .documentLayout()
             .hitTest(
-                event.pos(),
+                QPointF(float(event.pos().x()), float(event.pos().y())),
                 Qt.HitTestAccuracy.ExactHit,
             )
         )
