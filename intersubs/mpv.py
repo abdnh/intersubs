@@ -87,7 +87,7 @@ class MPVBase:
     popenEnv: Optional[dict[str, str]] = None
 
     default_argv = [
-        # "--idle",
+        "--idle",
         "--no-terminal",
         # "--force-window=no",
         # "--ontop",
