@@ -1,4 +1,4 @@
-pywin32
+pywin32; sys.platform == 'win32'
 PyQt6
 PyQt6-WebEngine
 mypy
