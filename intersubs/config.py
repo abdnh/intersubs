@@ -1,8 +1,6 @@
 # holds the styling of the subtitles. Modify at your own risks.
 style_subs = """
     QFrame {
-        background-color: rgba(0, 0, 0, 0);
-        color: black;
         font-family: "Noto Serif CJK JP Light";
     }
 """
