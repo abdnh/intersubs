@@ -469,17 +469,17 @@ taskman: TaskManager = None
 
 
 def on_global_click(frame: ParentFrame) -> None:
-    if (
-        config.alternative_triggers
-        and not frame.underMouse()
-        and not frame.subtext.popup.isHidden()
-    ):
-
-        def task() -> None:
+    def task() -> None:
+        if (
+            config.alternative_triggers
+            and not frame.underMouse()
+            and not frame.subtext.popup.isHidden()
+            and not frame.subtext.popup.underMouse()
+        ):
             frame.subtext.popup.hide()
             frame.mpv.set_property("pause", False)
 
-        taskman.run_on_main(task)
+    taskman.run_on_main(task)
 
 
 def run(paths, app=None, mpv=None, handler=None, settings={}) -> None:
