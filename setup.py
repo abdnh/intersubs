@@ -13,7 +13,10 @@ setup(
         "Operating System :: OS Independent",
     ],
     packages=["intersubs"],
-    install_requires=["pywin32"],
+    install_requires=[
+        "pywin32; sys.platform == 'win32'",
+        "mouse==0.7.1"
+    ],
     extras_require={
         "qt5": ["pyqt5", "PyQtWebEngine"],
         "qt6": ["PyQt6", "PyQt6-WebEngine"],
