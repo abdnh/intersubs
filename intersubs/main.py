@@ -482,7 +482,7 @@ def on_global_click(frame: ParentFrame) -> None:
         taskman.run_on_main(task)
 
 
-def run(paths, app=None, mpv=None, handler=None) -> None:
+def run(paths, app=None, mpv=None, handler=None, settings={}) -> None:
     if not paths:
         return
     is_external_app = bool(app)
@@ -492,6 +492,9 @@ def run(paths, app=None, mpv=None, handler=None) -> None:
         mpv = MPVInterSubs()
     # mpv.debug = True
     mpv.set_property("script-opts", "osc-deadzonesize=1")
+
+    for key, value in settings.items():
+        setattr(config, key, value)
 
     config.screen_width = app.screens()[config.n_screen].size().width()
     config.screen_height = app.screens()[config.n_screen].size().height()
