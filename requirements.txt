@@ -5,3 +5,4 @@ mypy
 pylint
 isort
 black
+mouse==0.7.1

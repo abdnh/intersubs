@@ -12,6 +12,7 @@ class Popup(QWebEngineView):
     def __init__(self, subtext: "SubtitleWidget", config, handler: InterSubsHandler):
         super(QWebEngineView, self).__init__(parent=subtext)
         self.subtext = subtext
+        self.config = config
         self.handler = handler
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setWindowOpacity(1)
@@ -34,6 +35,7 @@ class Popup(QWebEngineView):
         return super().enterEvent(event)
 
     def leaveEvent(self, event: QEvent) -> None:
-        self.hide()
-        self.subtext.mpv.set_property("pause", False)
+        if not self.config.alternative_triggers:
+            self.hide()
+            self.subtext.mpv.set_property("pause", False)
         return super().leaveEvent(event)

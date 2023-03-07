@@ -21,5 +21,9 @@ n_screen = 0
 # Subtitle lines with more words than the specified number will be split
 max_sub_line_words = 8
 
+# If set to True, the pop-up dictionary will be triggered on click, while the on-click one will be triggered on a double click
+# TODO: only tested on Windows - test on Linux
+alternative_triggers = True
+
 # Ideally, more parameters could be added here, as interSubs does:
 # https://github.com/oltodosel/interSubs/blob/master/interSubs_config.py

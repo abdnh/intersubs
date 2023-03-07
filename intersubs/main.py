@@ -2,10 +2,14 @@
 
 import sys
 
+import mouse
+
+
 from . import config
 from .handler import InterSubsHandler
 from .mpv_intersubs import MPVInterSubs
 from .popup import Popup
+from .taskman import TaskManager
 
 from .qt import (
     QApplication,
@@ -26,6 +30,7 @@ from .qt import (
     QVBoxLayout,
     pyqtSignal,
     QPointF,
+    QCursor,
 )
 
 
@@ -158,7 +163,7 @@ class SubtitleWidget(QTextEdit):
 
         self.no_popup = True
 
-    def mouseMoveEvent(self, event: QMouseEvent):
+    def on_popup(self, event: QMouseEvent) -> None:
         char_index = (
             self.document()
             .documentLayout()
@@ -202,13 +207,18 @@ class SubtitleWidget(QTextEdit):
             self.popup.show()
             self.after_popup_loaded()
 
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if not config.alternative_triggers:
+            return self.on_popup(event)
+
     def enterEvent(self, event):
         # the case where this event is triggered several times has been encountered,
         # hence the `self.already_in`
         if not self.already_in:
             self.already_in = True
             self.setUpdatesEnabled(True)
-            self.mpv.set_property("pause", True)
+            if not config.alternative_triggers:
+                self.mpv.set_property("pause", True)
 
         super().enterEvent(event)
 
@@ -216,10 +226,11 @@ class SubtitleWidget(QTextEdit):
         pos = self.cursor().pos()
         pos = self.popup.mapFrom(self, pos)
         rect = self.popup.rect().marginsAdded(QMargins(5, 5, 5, 5))
-        if not rect.contains(pos):
+        if not rect.contains(pos) and not config.alternative_triggers:
             self.popup.hide()
 
-        self.mpv.set_property("pause", False)
+        if not config.alternative_triggers:
+            self.mpv.set_property("pause", False)
 
         self.already_in = False
 
@@ -233,7 +244,7 @@ class SubtitleWidget(QTextEdit):
 
         super().leaveEvent(event)
 
-    def mousePressEvent(self, event: QMouseEvent):
+    def on_onclick(self, event: QMouseEvent) -> None:
         char_index = (
             self.document()
             .documentLayout()
@@ -245,7 +256,18 @@ class SubtitleWidget(QTextEdit):
 
         self.handler.on_sub_clicked(self.document().toPlainText(), char_index)
 
+    def mousePressEvent(self, event: QMouseEvent):
+        if config.alternative_triggers:
+            self.on_popup(event)
+            self.mpv.set_property("pause", True)
+        else:
+            self.on_onclick(event)
         super().mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        if config.alternative_triggers:
+            self.on_onclick(event)
+        return super().mouseDoubleClickEvent(event)
 
     # we do not want the context menu to display and steal focus
     def contextMenuEvent(self, event):
@@ -440,7 +462,24 @@ class ParentFrame(QFrame):
             p = QPainter(self)
             p.fillRect(event.rect(), QColor(0, 0, 0, 128))
 
-        super().paintEvent(event)
+        return super().paintEvent(event)
+
+
+taskman: TaskManager = None
+
+
+def on_global_click(frame: ParentFrame) -> None:
+    if (
+        config.alternative_triggers
+        and not frame.underMouse()
+        and not frame.subtext.popup.isHidden()
+    ):
+
+        def task() -> None:
+            frame.subtext.popup.hide()
+            frame.mpv.set_property("pause", False)
+
+        taskman.run_on_main(task)
 
 
 def run(paths, app=None, mpv=None, handler=None) -> None:
@@ -469,6 +508,8 @@ def run(paths, app=None, mpv=None, handler=None) -> None:
             app.processEvents()
             if not is_external_app:
                 app.exit()
+            else:
+                mouse.unhook_all()
             handler.on_shutdown()
 
     mpv.register_callback("file-loaded", on_file_loaded)
@@ -479,9 +520,18 @@ def run(paths, app=None, mpv=None, handler=None) -> None:
         mpv.command("loadfile", path, "append-play")
     if not handler:
         handler = InterSubsHandler(mpv)
+
     frame = ParentFrame(config, mpv, handler)
-    if not is_external_app:
-        app.exec()
+    global taskman
+    taskman = TaskManager()
+    try:
+        mouse.on_click(on_global_click, args=(frame,))
+
+        if not is_external_app:
+            app.exec()
+    finally:
+        if not is_external_app:
+            mouse.unhook_all()
 
 
 def main() -> None:
