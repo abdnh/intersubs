@@ -13,6 +13,7 @@ setup(
         "Operating System :: OS Independent",
     ],
     packages=["intersubs"],
+    package_data={"intersubs": ["py.typed"]},
     install_requires=[
         "mouse==0.7.1"
     ],
