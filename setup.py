@@ -14,10 +14,10 @@ setup(
     ],
     packages=["intersubs"],
     install_requires=[
-        "pywin32; sys.platform == 'win32'",
         "mouse==0.7.1"
     ],
     extras_require={
+        "standalone": ["pywin32; sys.platform == 'win32'"],
         "qt5": ["pyqt5", "PyQtWebEngine"],
         "qt6": ["PyQt6", "PyQt6-WebEngine"],
     },
